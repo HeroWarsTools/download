@@ -1,0 +1,56 @@
+[
+  {
+    "titolo": "Settings manager",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Extension-%20Native%20Settings%20Manager-4.0.0.user.js",
+    "descrizione": "Save and restore herowarshelper settings with one click",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#be9a47",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Dungeon",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWHBestDungeonExt-0.1.5mod(g_profiles_RC10).user.js",
+    "descrizione": "Advanced Dungeon Automation Scriptsviluppatori.",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff80",
+    "coloreBottone": "#0000ff",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Dungeon Panel",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor-3.2.2(ok).user.js",
+    "descrizione": "Panel and complementary utility for the dungeon script",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff80",
+    "coloreBottone": "#0000ff",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Adventure Extension",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWHAdvExt-0.0.16.js",
+    "descrizione": "You automatically get the routes for adventures and for the storm",
+    "coloreCasella": "#f8fafc",
+    "coloreTestoCasella": "#334155",
+    "coloreBottone": "#9fe798",
+    "coloreTestoBottone": "#000000"
+  },
+  {
+    "titolo": "Campaign Automator",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HwH%20Ext%20Campaign%20Automator-4.0(work).js",
+    "descrizione": "Automatically consume energy in the campaign on your favorite missions",
+    "coloreCasella": "#d5bf99",
+    "coloreTestoCasella": "#282828",
+    "coloreBottone": "#ffef24",
+    "coloreTestoBottone": "#8000ff"
+  },
+  {
+    "titolo": "New Character Ext",
+    "link": "https://github.com/Green-oGo/HWHNewCharacterExt/raw/refs/heads/main/HWHNewCharacterExt.user.js",
+    "descrizione": "Complete missions for the new character with just a few clicks",
+    "coloreCasella": "#bbffff",
+    "coloreTestoCasella": "#000000",
+    "coloreBottone": "#86ffed",
+    "coloreTestoBottone": "#0000ff"
+  }
+]
