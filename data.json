@@ -52,5 +52,32 @@
     "coloreTestoCasella": "#000000",
     "coloreBottone": "#86ffed",
     "coloreTestoBottone": "#0000ff"
+  },
+  {
+    "titolo": "Auto Buyer",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Auto-Buyer-5.5.0.user.js",
+    "descrizione": "Purchase automatically items from shop",
+    "coloreCasella": "#fdffca",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#faa516",
+    "coloreTestoBottone": "#630068"
+  },
+  {
+    "titolo": "HwH GiftOfTheElem.",
+    "link": "https://github.com/Green-oGo/HWHGiftOfTheElementsExt/raw/refs/heads/main/HWHGiftOfTheElementsExt.user.js",
+    "descrizione": "Upgrade / Downgrade quickly Gift of the Elements",
+    "coloreCasella": "#d5e0ff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#ffaaac",
+    "coloreTestoBottone": "#12ec00"
+  },
+  {
+    "titolo": "Craft Items",
+    "link": "https://zingery.ru/scripts/HWHCraftItemsExt.user.js",
+    "descrizione": "Craft items with 1 click",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
