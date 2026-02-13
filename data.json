@@ -79,5 +79,14 @@
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Auto Account Switch",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Time-Based%20Account%20Switcher-1.8.0(stable).user.js",
+    "descrizione": "Switch account automatically by timer and by email",
+    "coloreCasella": "#0000ff",
+    "coloreTestoCasella": "#ffff00",
+    "coloreBottone": "#8000ff",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
