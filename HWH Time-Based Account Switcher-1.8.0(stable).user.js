@@ -1,15 +1,13 @@
 // ==UserScript==
 // @name         HWH Time-Based Account Switcher
 // @namespace    HWH.Addons
-// @version      1.8.0
-// @description  Manages time-based account switching with Overlap Protection and Native GUI.
-// @description:ru Управляет переключением учетных записей по времени с защитой от наложений и нативным GUI.
+// @version      1.9.0
+// @description  Manages time-based account switching with Container Isolation (LocalStorage) and Native GUI.
+// @description:ru Управляет переключением учетных записей по времени с изоляцией контейнеров (LocalStorage) и нативным GUI.
 // @author       HWH Extension Architect
 // @match        https://www.hero-wars.com/*
 // @match        https://apps-1701433570146040.apps.fbsbx.com/*
 // @grant        unsafeWindow
-// @grant        GM_getValue
-// @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @run-at       document-start
@@ -22,13 +20,16 @@
     const DEBUG_MODE = true;
 
     // --- [2] STORAGE KEYS ---
-    const SCRIPT_KEY = "hwh_time_switcher_key_v2";
+    const SCRIPT_KEY = "hwh_time_switcher_key_v3_container_isolated"; // Changed key to force fresh start
     const FIXED_MASTER_KEY = "dasda%3445fsfczSGFDSFsfre252";
 
-    const ENCRYPTED_ACCOUNTS_KEY = 'hwhTimeBasedEncryptedAccounts_v1';
-    const CONFIG_CACHE_KEY = 'hwhTimeBasedAccountConfigs_Cache';
-    const ID_EMAIL_MAP_KEY = 'hwhTimeBasedIdEmailMap';
-    const LOGIN_ATTEMPT_KEY = 'hwhTimeBasedLoginAttempt';
+    // We now use localStorage for EVERYTHING to ensure Firefox Container isolation.
+    // GM_storage is global across containers, which causes data mixing.
+    const STORAGE_PREFIX = 'HWH_TBS_';
+    const ENCRYPTED_ACCOUNTS_KEY = STORAGE_PREFIX + 'EncryptedAccounts';
+    const CONFIG_CACHE_KEY = STORAGE_PREFIX + 'ConfigCache';
+    const ID_EMAIL_MAP_KEY = STORAGE_PREFIX + 'IdEmailMap';
+    const LOGIN_ATTEMPT_KEY = STORAGE_PREFIX + 'LoginAttempt';
 
     // --- [3] DOM SELECTORS ---
     const USER_MENU_ICON_SELECTOR = 'button:has(.user-control-menu-button-icon)';
@@ -72,7 +73,18 @@
         if (DEBUG_MODE) console.log(`[HWH-Switcher] ${msg}`, ...args);
     }
 
-    // --- [6] OVERLAP CHECK (From v4.5) ---
+    // --- [6] STORAGE HELPERS (Container Safe) ---
+    // Wrappers for localStorage to replace GM_getValue/setValue
+    function storageGet(key, defaultValue) {
+        const val = localStorage.getItem(key);
+        return val !== null ? val : defaultValue;
+    }
+
+    function storageSet(key, value) {
+        localStorage.setItem(key, value);
+    }
+
+    // --- [7] OVERLAP CHECK ---
     function checkOverlap(configs, newStart, newEnd) {
         const newS = timeToMinutes(newStart);
         const newE = timeToMinutes(newEnd);
@@ -84,24 +96,18 @@
             const exE = timeToMinutes(existing.end);
             const isExCross = exE <= exS;
 
-            // Helper to check if a specific minute is inside an interval
             const isInside = (min, s, e, cross) => cross ? (min >= s || min < e) : (min >= s && min < e);
 
-            // Check if New Start is inside Existing
             const startIn = isInside(newS, exS, exE, isExCross);
-            // Check if New End is inside Existing (approximate, checking minute before end)
             const endIn = isInside((newE - 1 + 1440) % 1440, exS, exE, isExCross);
-            // Check if Existing Start is inside New
             const exStartIn = isInside(exS, newS, newE, isNewCross);
 
-            if (startIn || endIn || exStartIn) {
-                return true; // Overlap detected
-            }
+            if (startIn || endIn || exStartIn) return true;
         }
         return false;
     }
 
-    // --- [7] TIME INPUT HANDLERS ---
+    // --- [8] TIME INPUT HANDLERS ---
     function adjustTime(input, deltaMinutes) {
         const val = input.value.trim();
         if (!/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$|^24:00$/.test(val)) return;
@@ -124,37 +130,56 @@
         }
     }
 
-    // --- [8] DATA MANAGEMENT ---
+    // --- [9] DATA MANAGEMENT ---
     function loadData() {
-        idEmailMap = JSON.parse(GM_getValue(ID_EMAIL_MAP_KEY, '{}'));
+        // Load ID-Email Map from LocalStorage (Container Isolated)
         try {
-            const saved = GM_getValue(CONFIG_CACHE_KEY);
+            const mapData = storageGet(ID_EMAIL_MAP_KEY, '{}');
+            idEmailMap = JSON.parse(mapData);
+        } catch (e) { idEmailMap = {}; }
+
+        // Load Configs
+        try {
+            const saved = storageGet(CONFIG_CACHE_KEY, null);
             const decrypted = localStorage.getItem(ENCRYPTED_ACCOUNTS_KEY);
+
             if (saved && decrypted) {
                 const decData = JSON.parse(simpleCipher(decrypted, FIXED_MASTER_KEY + SCRIPT_KEY));
-                accountConfigs = JSON.parse(saved).map(c => {
-                    const creds = decData.find(d => d.email.toLowerCase() === c.email.toLowerCase());
-                    return { ...c, password: creds ? creds.password : '' };
-                });
+                const rawConfigs = JSON.parse(saved);
+
+                accountConfigs = rawConfigs
+                    .filter(c => c.email && c.email.trim() !== "")
+                    .map(c => {
+                        const creds = decData.find(d => d.email.toLowerCase() === c.email.toLowerCase());
+                        return { ...c, password: creds ? creds.password : '' };
+                    });
+            } else {
+                accountConfigs = [];
             }
-        } catch (e) { console.error("Load Error:", e); }
+        } catch (e) { console.error("Load Error:", e); accountConfigs = []; }
     }
 
     function saveConfigs(configs) {
-        const encData = configs.map(c => ({ email: c.email, password: c.password }));
+        const validConfigs = configs.filter(c => c.email && c.email.trim() !== "" && c.password);
+
+        const encData = validConfigs.map(c => ({ email: c.email, password: c.password }));
         localStorage.setItem(ENCRYPTED_ACCOUNTS_KEY, simpleCipher(JSON.stringify(encData), FIXED_MASTER_KEY + SCRIPT_KEY));
-        const cacheData = configs.map(c => ({ name: c.name, email: c.email, start: c.start, end: c.end }));
-        GM_setValue(CONFIG_CACHE_KEY, JSON.stringify(cacheData));
-        accountConfigs = configs;
+
+        const cacheData = validConfigs.map(c => ({ name: c.name, email: c.email, start: c.start, end: c.end }));
+        storageSet(CONFIG_CACHE_KEY, JSON.stringify(cacheData));
+
+        accountConfigs = validConfigs;
     }
 
-    // --- [9] LOGIC: LOGIN / LOGOUT / CHECK ---
+    // --- [10] LOGIC: LOGIN / LOGOUT / CHECK ---
     function getCurrentAccountId() {
         const info = unsafeWindow.HWHFuncs?.getUserInfo?.();
         return (info && info.accountId) ? String(info.accountId) : null;
     }
 
     function performLogin(email, password) {
+        if (!email || !password || email.trim() === "") return;
+
         logDebug(`Attempting login as ${email}...`);
         const emailIn = document.querySelector(EMAIL_INPUT_SELECTOR);
         const passIn = document.querySelector(PASSWORD_INPUT_SELECTOR);
@@ -162,18 +187,23 @@
 
         if (emailIn && passIn && btn) {
             sessionStorage.setItem(LOGIN_ATTEMPT_KEY, email);
+
+            emailIn.value = '';
+            passIn.value = '';
+
             emailIn.value = email;
             passIn.value = password;
             emailIn.dispatchEvent(new Event('input', { bubbles: true }));
             passIn.dispatchEvent(new Event('input', { bubbles: true }));
-            btn.click();
+
+            setTimeout(() => btn.click(), 100);
         } else {
-            logDebug("Login elements not found. Checking if already logged in...");
+            // Fallback: check if already logged in
             const curId = getCurrentAccountId();
             if (curId) {
-                logDebug(`Already logged in as ID ${curId}. Mapping to ${email} immediately.`);
+                logDebug(`Already logged in as ID ${curId}. Mapping to ${email}.`);
                 idEmailMap[curId] = email;
-                GM_setValue(ID_EMAIL_MAP_KEY, JSON.stringify(idEmailMap));
+                storageSet(ID_EMAIL_MAP_KEY, JSON.stringify(idEmailMap));
                 sessionStorage.removeItem(LOGIN_ATTEMPT_KEY);
                 window.location.reload();
             } else {
@@ -204,6 +234,7 @@
 
         if (!unsafeWindow.HWHFuncs) return;
 
+        // --- IDLE MODE CHECK ---
         if (!target) {
             if (sessionStorage.getItem(LOGIN_ATTEMPT_KEY)) {
                 logDebug("[IDLE MODE] Clearing stale login attempt key.");
@@ -212,14 +243,17 @@
             return;
         }
 
+        if (!target.email || !target.password) return;
+
         const targetEmail = target.email.toLowerCase();
 
+        // Auto-Learn Mapping
         const pendingEmail = sessionStorage.getItem(LOGIN_ATTEMPT_KEY);
         if (currentId && pendingEmail) {
             if (!idEmailMap[currentId] && pendingEmail.toLowerCase() === targetEmail) {
                 logDebug(`[AUTO-LEARN] Mapping ID ${currentId} to ${targetEmail}`);
                 idEmailMap[currentId] = targetEmail;
-                GM_setValue(ID_EMAIL_MAP_KEY, JSON.stringify(idEmailMap));
+                storageSet(ID_EMAIL_MAP_KEY, JSON.stringify(idEmailMap));
             }
             sessionStorage.removeItem(LOGIN_ATTEMPT_KEY);
         }
@@ -242,7 +276,7 @@
         }
     }
 
-    // --- [10] JSON IMPORT/EXPORT ---
+    // --- [11] JSON IMPORT/EXPORT ---
     function exportConfig() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(accountConfigs, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -254,9 +288,9 @@
     }
 
     function validateAndLoadConfig(data) {
-        if (!Array.isArray(data)) { alert("Invalid JSON format: Root must be an array."); return false; }
+        if (!Array.isArray(data)) { alert("Invalid JSON format."); return false; }
         const validData = data.filter(c => c.email && c.email.trim() !== "" && c.password && c.start && c.end);
-        if (validData.length === 0 && data.length > 0) { alert("No valid accounts found in JSON."); return false; }
+        if (validData.length === 0 && data.length > 0) { alert("No valid accounts found."); return false; }
         saveConfigs(validData);
         return true;
     }
@@ -301,7 +335,7 @@
         });
     }
 
-    // --- [11] GUI ---
+    // --- [12] GUI ---
     function renderList() {
         const cont = document.getElementById('hwh-config-list');
         if (!cont) return;
@@ -351,10 +385,10 @@
     function openGUI() {
         const { popup } = unsafeWindow.HWHFuncs;
         popup.customPopup(async (complete) => {
-            popup.setMsgText('Account Switcher');
+            popup.setMsgText('Account Switcher (Container Isolated)');
             popup.custom.innerHTML = `
                 <div style="text-align:center; color:#aaa; font-size:12px; margin-bottom:10px;">
-                    Credentials are encrypted locally. <br>
+                    Credentials encrypted in LocalStorage (Container Safe). <br>
                     <span style="color:#f04747;">Warning: Exported JSON contains plain text passwords.</span><br>
                     <span style="color:#888;">Use W/S for Hours, Arrows for Minutes.</span>
                 </div>
@@ -369,7 +403,6 @@
             renderList();
 
             popup.custom.querySelector('#hwh-add').onclick = () => {
-                // FIX: Default to 00:00-00:00 (Inactive) to prevent accidental overlaps
                 accountConfigs.push({ name:'', email:'', password:'', start:'00:00', end:'00:00' });
                 renderList();
             };
@@ -395,14 +428,9 @@
                 });
                 if(err) return alert('Missing fields');
 
-                // FIX: Check for overlaps before saving
                 for (let i = 0; i < newC.length; i++) {
-                    if (checkOverlap(newC, newC[i].start, newC[i].end, i)) { // Pass index to exclude self
-                        // Actually, checkOverlap helper above needs modification to exclude self index
-                        // Simplified: check against already processed list
-                        if (checkOverlap(newC.slice(0, i), newC[i].start, newC[i].end)) {
-                             return alert(`Time overlap detected for ${newC[i].email}! Please fix intervals.`);
-                        }
+                    if (checkOverlap(newC.slice(0, i), newC[i].start, newC[i].end)) {
+                         return alert(`Time overlap detected for ${newC[i].email}! Please fix intervals.`);
                     }
                 }
 
@@ -416,7 +444,7 @@
         });
     }
 
-    // --- [12] INIT ---
+    // --- [13] INIT ---
     function init() {
         try {
             loadData();
@@ -424,7 +452,7 @@
             const curId = getCurrentAccountId();
             const attemptEmail = sessionStorage.getItem(LOGIN_ATTEMPT_KEY);
 
-            if (!curId && attemptEmail) {
+            if (curId && attemptEmail) {
                 const now = new Date();
                 const mins = now.getHours() * 60 + now.getMinutes();
                 const cfg = accountConfigs.find(c => c.email.toLowerCase() === attemptEmail.toLowerCase());
