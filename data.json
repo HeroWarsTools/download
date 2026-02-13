@@ -88,5 +88,14 @@
     "coloreTestoCasella": "#ffff00",
     "coloreBottone": "#8000ff",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Firefox Multi Account Container",
+    "link": "https://luponerd.github.io/firefox/fmac/setup.html",
+    "descrizione": "Setup Firefox Multi Account Container to open automatically your accounts",
+    "coloreCasella": "#0000ff",
+    "coloreTestoCasella": "#ffff00",
+    "coloreBottone": "#8000ff",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
