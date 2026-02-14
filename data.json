@@ -10,7 +10,7 @@
   },
   {
     "titolo": "Dungeon",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWHBestDungeonExt-0.1.7(Threshold&Weights).user.js",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWHBestDungeonExt-0.1.5mod(g_profiles_RC10).user.js",
     "descrizione": "Advanced Dungeon Automation Scriptsviluppatori.",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
@@ -20,6 +20,15 @@
   {
     "titolo": "Dungeon Panel",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor-3.2.2(ok).user.js",
+    "descrizione": "Panel and complementary utility for the dungeon script",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff80",
+    "coloreBottone": "#0000ff",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Dungeon Panel Plus",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/data.json",
     "descrizione": "Panel and complementary utility for the dungeon script",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
@@ -84,15 +93,6 @@
     "titolo": "Auto Account Switch",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Time-Based%20Account%20Switcher-1.8.0(stable).user.js",
     "descrizione": "Switch account automatically by timer and by email",
-    "coloreCasella": "#0000ff",
-    "coloreTestoCasella": "#ffff00",
-    "coloreBottone": "#8000ff",
-    "coloreTestoBottone": "#ffffff"
-  },
-  {
-    "titolo": "Firefox Multi Account Container",
-    "link": "https://luponerd.github.io/firefox/fmac/setup.html",
-    "descrizione": "Setup Firefox Multi Account Container to open automatically your accounts",
     "coloreCasella": "#0000ff",
     "coloreTestoCasella": "#ffff00",
     "coloreBottone": "#8000ff",
