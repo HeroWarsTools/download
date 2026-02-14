@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON Data Editor</title>
+    <title>JSON Data Editor - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .table-container {
@@ -17,24 +17,49 @@
             cursor: pointer;
             background: none;
         }
+        /* Stili per la modale */
+        #jsonModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            backdrop-filter: blur(4px);
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen font-sans p-4 md:p-8">
 
     <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6">
-        <header class="border-b pb-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <header class="border-b pb-6 mb-6 flex flex-col lg:flex-row justify-between items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Editor Dati Dashboard</h1>
-                <p class="text-gray-500 text-sm">Carica, modifica ed esporta il tuo file data.json</p>
+                <p class="text-gray-500 text-sm">Gestisci il tuo file data.json via file o via testo</p>
             </div>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap justify-center gap-2">
                 <input type="file" id="importFile" accept=".json" class="hidden">
-                <button onclick="document.getElementById('importFile').click()" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition">
-                    Importa JSON
-                </button>
-                <button onclick="exportJSON()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition">
-                    Esporta JSON
-                </button>
+                
+                <!-- Gruppo File -->
+                <div class="flex bg-gray-50 p-1 rounded-lg border">
+                    <button onclick="document.getElementById('importFile').click()" class="text-xs md:text-sm bg-white border shadow-sm text-gray-700 px-3 py-2 rounded-md font-medium hover:bg-gray-50 transition">
+                        Importa File
+                    </button>
+                    <button onclick="exportJSON()" class="text-xs md:text-sm text-gray-700 px-3 py-2 font-medium hover:text-blue-600 transition">
+                        Esporta File
+                    </button>
+                </div>
+
+                <!-- Gruppo Testo -->
+                <div class="flex bg-blue-50 p-1 rounded-lg border border-blue-100">
+                    <button onclick="openModal('import')" class="text-xs md:text-sm text-blue-700 px-3 py-2 font-medium hover:text-blue-900 transition">
+                        Importa Testo
+                    </button>
+                    <button onclick="openModal('export')" class="text-xs md:text-sm bg-blue-600 text-white px-3 py-2 rounded-md font-medium hover:bg-blue-700 transition">
+                        Esporta Testo
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -60,10 +85,31 @@
         </button>
     </div>
 
+    <!-- Modale per Import/Export Testuale -->
+    <div id="jsonModal" class="flex">
+        <div class="bg-white w-full max-w-2xl mx-4 rounded-2xl shadow-2xl overflow-hidden">
+            <div class="p-4 border-b flex justify-between items-center bg-gray-50">
+                <h2 id="modalTitle" class="font-bold text-gray-700">JSON Editor</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
+            <div class="p-6">
+                <p id="modalDesc" class="text-sm text-gray-500 mb-4"></p>
+                <textarea id="jsonArea" class="w-full h-80 font-mono text-xs p-4 border rounded-xl bg-gray-900 text-green-400 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="[{...}]"></textarea>
+                
+                <div id="copyFeedback" class="hidden text-green-600 text-xs font-bold mt-2 text-center">Copiato negli appunti!</div>
+                
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button onclick="closeModal()" class="px-6 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-100">Annulla</button>
+                    <button id="modalActionBtn" class="px-6 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 shadow-lg transition">Applica</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let gridData = [];
 
-        // Gestione Importazione
+        // Gestione Importazione da File
         document.getElementById('importFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -74,7 +120,7 @@
                     gridData = JSON.parse(e.target.result);
                     renderTable();
                 } catch (err) {
-                    alert("Errore nel formato del file JSON!");
+                    showCustomAlert("Errore nel formato del file JSON!");
                 }
             };
             reader.readAsText(file);
@@ -91,7 +137,7 @@
                 tr.innerHTML = `
                     <td class="p-3">
                         <input type="text" value="${item.titolo || ''}" onchange="updateData(${index}, 'titolo', this.value)" placeholder="Titolo" class="block w-full mb-1 border rounded px-2 py-1 text-sm font-bold">
-                        <input type="text" value="${item.link || ''}" onchange="updateData(${index}, 'link', this.value)" placeholder="URL (https://...)" class="block w-full border rounded px-2 py-1 text-xs text-blue-600">
+                        <input type="text" value="${item.link || ''}" onchange="updateData(${index}, 'link', this.value)" placeholder="URL" class="block w-full border rounded px-2 py-1 text-xs text-blue-600">
                     </td>
                     <td class="p-3">
                         <textarea onchange="updateData(${index}, 'descrizione', this.value)" class="w-full border rounded px-2 py-1 text-sm" rows="2">${item.descrizione || ''}</textarea>
@@ -121,7 +167,7 @@
                         </div>
                     </td>
                     <td class="p-3 text-right">
-                        <button onclick="removeRow(${index})" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition">
+                        <button onclick="removeRow(${index})" class="text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg transition text-sm">
                             Elimina
                         </button>
                     </td>
@@ -136,7 +182,7 @@
 
         function addRow() {
             gridData.push({
-                titolo: "Nuovo Link",
+                titolo: "Nuova Voce",
                 link: "https://",
                 descrizione: "Descrizione di esempio",
                 coloreCasella: "#ffffff",
@@ -154,6 +200,60 @@
             }
         }
 
+        // --- FUNZIONI MODALE ---
+
+        function openModal(mode) {
+            const modal = document.getElementById('jsonModal');
+            const title = document.getElementById('modalTitle');
+            const desc = document.getElementById('modalDesc');
+            const area = document.getElementById('jsonArea');
+            const actionBtn = document.getElementById('modalActionBtn');
+            const feedback = document.getElementById('copyFeedback');
+            
+            modal.style.display = 'flex';
+            feedback.classList.add('hidden');
+
+            if (mode === 'export') {
+                title.innerText = "Esporta JSON (Copia Testo)";
+                desc.innerText = "Copia il codice sottostante per incollarlo dove desideri.";
+                area.value = JSON.stringify(gridData, null, 2);
+                area.readOnly = true;
+                actionBtn.innerText = "Copia negli appunti";
+                actionBtn.onclick = () => {
+                    area.select();
+                    document.execCommand('copy');
+                    feedback.classList.remove('hidden');
+                    setTimeout(() => feedback.classList.add('hidden'), 2000);
+                };
+            } else {
+                title.innerText = "Importa JSON (Incolla Testo)";
+                desc.innerText = "Incolla qui il tuo codice JSON per caricare i dati nell'editor.";
+                area.value = "";
+                area.readOnly = false;
+                area.focus();
+                actionBtn.innerText = "Carica Dati";
+                actionBtn.onclick = () => {
+                    try {
+                        const imported = JSON.parse(area.value);
+                        if (Array.isArray(imported)) {
+                            gridData = imported;
+                            renderTable();
+                            closeModal();
+                        } else {
+                            alert("Il JSON deve essere un Array di oggetti!");
+                        }
+                    } catch (e) {
+                        alert("Formato JSON non valido!");
+                    }
+                };
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('jsonModal').style.display = 'none';
+        }
+
+        // Esportazione File Classica
         function exportJSON() {
             if (gridData.length === 0) {
                 alert("Nessun dato da esportare!");
@@ -162,7 +262,6 @@
             const dataStr = JSON.stringify(gridData, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
-            
             const link = document.createElement('a');
             link.href = url;
             link.download = "data.json";
@@ -170,7 +269,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // Inizializzazione con una riga vuota se necessario
         window.onload = renderTable;
     </script>
 </body>
