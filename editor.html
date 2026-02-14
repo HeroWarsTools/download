@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Data Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .table-container {
+            overflow-x: auto;
+        }
+        input[type="color"] {
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            background: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6">
+        <header class="border-b pb-6 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Editor Dati Dashboard</h1>
+                <p class="text-gray-500 text-sm">Carica, modifica ed esporta il tuo file data.json</p>
+            </div>
+            <div class="flex gap-2">
+                <input type="file" id="importFile" accept=".json" class="hidden">
+                <button onclick="document.getElementById('importFile').click()" class="bg-blue-100 text-blue-700 px-4 py-2 rounded-lg font-medium hover:bg-blue-200 transition">
+                    Importa JSON
+                </button>
+                <button onclick="exportJSON()" class="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition">
+                    Esporta JSON
+                </button>
+            </div>
+        </header>
+
+        <div class="table-container">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 border-b">
+                        <th class="p-3 text-xs uppercase text-gray-500 font-bold">Titolo & Link</th>
+                        <th class="p-3 text-xs uppercase text-gray-500 font-bold">Descrizione</th>
+                        <th class="p-3 text-xs uppercase text-gray-500 font-bold text-center">Colori Casella</th>
+                        <th class="p-3 text-xs uppercase text-gray-500 font-bold text-center">Colori Bottone</th>
+                        <th class="p-3 text-xs uppercase text-gray-500 font-bold text-right">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Rows will be injected here -->
+                </tbody>
+            </table>
+        </div>
+
+        <button onclick="addRow()" class="mt-6 w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-all flex items-center justify-center gap-2">
+            <span>+ Aggiungi Nuova Voce</span>
+        </button>
+    </div>
+
+    <script>
+        let gridData = [];
+
+        // Gestione Importazione
+        document.getElementById('importFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    gridData = JSON.parse(e.target.result);
+                    renderTable();
+                } catch (err) {
+                    alert("Errore nel formato del file JSON!");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            gridData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50 transition";
+                
+                tr.innerHTML = `
+                    <td class="p-3">
+                        <input type="text" value="${item.titolo || ''}" onchange="updateData(${index}, 'titolo', this.value)" placeholder="Titolo" class="block w-full mb-1 border rounded px-2 py-1 text-sm font-bold">
+                        <input type="text" value="${item.link || ''}" onchange="updateData(${index}, 'link', this.value)" placeholder="URL (https://...)" class="block w-full border rounded px-2 py-1 text-xs text-blue-600">
+                    </td>
+                    <td class="p-3">
+                        <textarea onchange="updateData(${index}, 'descrizione', this.value)" class="w-full border rounded px-2 py-1 text-sm" rows="2">${item.descrizione || ''}</textarea>
+                    </td>
+                    <td class="p-3">
+                        <div class="flex flex-col items-center gap-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${item.coloreCasella || '#ffffff'}" onchange="updateData(${index}, 'coloreCasella', this.value)">
+                                <span class="text-[10px] uppercase font-mono">BG</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${item.coloreTestoCasella || '#000000'}" onchange="updateData(${index}, 'coloreTestoCasella', this.value)">
+                                <span class="text-[10px] uppercase font-mono">TX</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-3">
+                         <div class="flex flex-col items-center gap-2">
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${item.coloreBottone || '#3b82f6'}" onchange="updateData(${index}, 'coloreBottone', this.value)">
+                                <span class="text-[10px] uppercase font-mono">BG</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="color" value="${item.coloreTestoBottone || '#ffffff'}" onchange="updateData(${index}, 'coloreTestoBottone', this.value)">
+                                <span class="text-[10px] uppercase font-mono">TX</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-3 text-right">
+                        <button onclick="removeRow(${index})" class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition">
+                            Elimina
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateData(index, field, value) {
+            gridData[index][field] = value;
+        }
+
+        function addRow() {
+            gridData.push({
+                titolo: "Nuovo Link",
+                link: "https://",
+                descrizione: "Descrizione di esempio",
+                coloreCasella: "#ffffff",
+                coloreTestoCasella: "#1f2937",
+                coloreBottone: "#2563eb",
+                coloreTestoBottone: "#ffffff"
+            });
+            renderTable();
+        }
+
+        function removeRow(index) {
+            if(confirm("Sicuro di voler eliminare questa voce?")) {
+                gridData.splice(index, 1);
+                renderTable();
+            }
+        }
+
+        function exportJSON() {
+            if (gridData.length === 0) {
+                alert("Nessun dato da esportare!");
+                return;
+            }
+            const dataStr = JSON.stringify(gridData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = "data.json";
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Inizializzazione con una riga vuota se necessario
+        window.onload = renderTable;
+    </script>
+</body>
+</html>
