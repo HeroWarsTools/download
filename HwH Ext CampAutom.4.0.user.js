@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         HWH Ext Campaign Automator
 // @namespace    HWH_Extensions
-// @version      4.0.0
-// @description  v4.0: Full I18N (En/Ru), Fixed Force Raid Logic, Auto-Loop, Compact UI.
+// @version      4.1.0
+// @description  v4.1: Fixed DB ObjectStore Error, Async UserID Fetch, Raid Multi Check.
 // @author       ZingerY (Logic) & Gemini (Architect)
 // @match        https://www.hero-wars.com/*
 // @match        https://apps-1701433570146040.apps.fbsbx.com/*
@@ -13,12 +13,8 @@
 (function() {
     'use strict';
 
-    /**
-     * @AI-REFERENCE: CONFIGURATION
-     */
     const CONFIG = {
         id: 'hwh_campaign_auto_arch',
-        // Label will be set via I18N in init
         color: 'purple',
         anchorId: 'dailyQuests',
         dbName: 'HeroWarsHelper',
@@ -31,11 +27,11 @@
         'W3': 'https://raw.githubusercontent.com/HeroWarsTools/profiles/main/campaign3.json'
     };
 
-    // --- TRANSLATION DATA ---
+    // --- I18N ---
     const i18n_en = {
-        CAMP_LABEL: "Campaign Auto",
+        CAMP_LABEL: "Campaign/Кампания",
         CAMP_TOOLTIP: "Automate Campaign Missions",
-        CAMP_TITLE: "Campaign Auto v4.0",
+        CAMP_TITLE: "Campaign Auto v4.1",
         CAMP_METHOD: "Method",
         CAMP_MISSION: "Mission",
         CAMP_REPS: "Reps",
@@ -72,9 +68,9 @@
     };
 
     const i18n_ru = {
-        CAMP_LABEL: "Авто-Кампания",
+        CAMP_LABEL: "Campaign/Кампания",
         CAMP_TOOLTIP: "Автоматизация миссий кампании",
-        CAMP_TITLE: "Авто-Кампания v4.0",
+        CAMP_TITLE: "Авто-Кампания v4.1",
         CAMP_METHOD: "Метод",
         CAMP_MISSION: "Миссия",
         CAMP_REPS: "Повторы",
@@ -116,13 +112,86 @@
     let isSavingMode = false;
 
     /**
-     * @AI-REFERENCE: DATABASE MODULE
+     * @AI-REFERENCE: DATABASE MODULE (ROBUST FIX)
      */
     class HWHExtensionDB {
-        constructor(dbName, storeName) { this.dbName = dbName; this.storeName = storeName; this.db = null; }
-        async open() { return new Promise((resolve, reject) => { const request = indexedDB.open(this.dbName); request.onsuccess = () => { this.db = request.result; resolve(); }; request.onerror = () => reject(); }); }
-        async get(key, def) { return new Promise((resolve) => { try { if (!this.db) { resolve(def); return; } const transaction = this.db.transaction([this.storeName], 'readonly'); const request = transaction.objectStore(this.storeName).get(key); request.onsuccess = () => resolve(request.result === undefined ? def : request.result); } catch (e) { resolve(def); } }); }
-        async set(key, value) { return new Promise(async (resolve, reject) => { try { if (!this.db) await this.open(); const transaction = this.db.transaction([this.storeName], 'readwrite'); transaction.objectStore(this.storeName).put(value, key); transaction.oncomplete = () => resolve(); } catch (e) { reject(e); } }); }
+        constructor(dbName, storeName) { 
+            this.dbName = dbName; 
+            this.storeName = storeName; 
+            this.db = null; 
+        }
+        
+        async open() {
+            return new Promise((resolve, reject) => {
+                // First try to open normally
+                let request = indexedDB.open(this.dbName);
+                
+                request.onsuccess = (e) => {
+                    const db = e.target.result;
+                    // Check if store exists
+                    if (!db.objectStoreNames.contains(this.storeName)) {
+                        console.log(`[HWH DB] Store '${this.storeName}' missing. Upgrading...`);
+                        const version = db.version + 1;
+                        db.close();
+                        
+                        // Re-open with higher version to trigger upgrade
+                        const upgradeReq = indexedDB.open(this.dbName, version);
+                        upgradeReq.onupgradeneeded = (evt) => {
+                            const upgradeDb = evt.target.result;
+                            upgradeDb.createObjectStore(this.storeName);
+                        };
+                        upgradeReq.onsuccess = (evt) => {
+                            this.db = evt.target.result;
+                            resolve();
+                        };
+                        upgradeReq.onerror = (err) => reject(err);
+                    } else {
+                        this.db = db;
+                        resolve();
+                    }
+                };
+                
+                request.onerror = (e) => reject(e);
+                
+                // Handle case where DB doesn't exist at all
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(this.storeName)) {
+                        db.createObjectStore(this.storeName);
+                    }
+                };
+            });
+        }
+
+        async get(key, def) {
+            return new Promise(async (resolve) => {
+                try {
+                    if (!this.db) await this.open();
+                    const transaction = this.db.transaction([this.storeName], 'readonly');
+                    const request = transaction.objectStore(this.storeName).get(key);
+                    request.onsuccess = () => resolve(request.result === undefined ? def : request.result);
+                    request.onerror = () => resolve(def);
+                } catch (e) {
+                    console.error("DB Get Error:", e);
+                    resolve(def);
+                }
+            });
+        }
+
+        async set(key, value) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    if (!this.db) await this.open();
+                    const transaction = this.db.transaction([this.storeName], 'readwrite');
+                    const request = transaction.objectStore(this.storeName).put(value, key);
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = (e) => reject(e);
+                } catch (e) {
+                    console.error("DB Set Error:", e);
+                    reject(e);
+                }
+            });
+        }
     }
     const db = new HWHExtensionDB(CONFIG.dbName, CONFIG.storeName);
 
@@ -140,15 +209,16 @@
 
     async function init() {
         console.log(`[HWH Ext] Campaign Automator v${GM_info.script.version} Loaded`);
-
-        // Inject Translations
-        Object.assign(unsafeWindow.HWHData.i18nLangData.en, i18n_en);
-        Object.assign(unsafeWindow.HWHData.i18nLangData.ru, i18n_ru);
+        
+        if (unsafeWindow.HWHData.i18nLangData) {
+            Object.assign(unsafeWindow.HWHData.i18nLangData.en, i18n_en);
+            Object.assign(unsafeWindow.HWHData.i18nLangData.ru, i18n_ru);
+        }
 
         await db.open();
         injectMenuButton();
         exposeAPI();
-
+        
         if (autoCheckInterval) clearInterval(autoCheckInterval);
         autoCheckInterval = setInterval(() => backgroundEnergyCheck(false), 10 * 60 * 1000);
 
@@ -201,22 +271,36 @@
         };
     }
 
+    // --- ASYNC USER ID HELPER ---
+    async function getUserId() {
+        const cached = unsafeWindow.HWHFuncs.getUserInfo();
+        if (cached && cached.id) return cached.id;
+        
+        try {
+            const data = await unsafeWindow.Caller.send("userGetInfo");
+            return data?.id || 0;
+        } catch(e) {
+            console.error("Failed to fetch UserID", e);
+            return 0;
+        }
+    }
+
     /**
      * @AI-REFERENCE: MAIN POPUP UI
      */
     async function openMainPopup() {
-        const { popup, getUserInfo, I18N } = unsafeWindow.HWHFuncs;
-        const userId = getUserInfo()?.id;
+        const { popup, I18N } = unsafeWindow.HWHFuncs;
+        
+        const userId = await getUserId();
         const settings = await getSettings(userId);
         const vipInfo = await checkVipStatus();
         isSavingMode = false;
 
-        // Dynamic Options
         let methodOptions = `
             <option value="skip_battle" ${settings.method === 'skip_battle' ? 'selected' : ''}>${I18N('CAMP_OPT_SKIP')}</option>
             <option value="sequence" ${settings.method === 'sequence' ? 'selected' : ''}>${I18N('CAMP_OPT_SEQ')}</option>
         `;
-
+        
         if (vipInfo.canRaidSingle || settings.forceRaid) {
             methodOptions += `<option value="raid_single" ${settings.method === 'raid_single' ? 'selected' : ''}>${I18N('CAMP_OPT_RAID1')}</option>`;
         }
@@ -237,25 +321,23 @@
         const html = `
             <div id="hwh_camp_ui" style="display: flex; flex-direction: column; gap: 8px; min-width: 280px; max-width: 300px; color: #fce1ac; font-size: 13px;">
                 <h3 style="text-align: center; color: #fde5b6; margin: 0 0 5px 0;">${I18N('CAMP_TITLE')}</h3>
-
-                <!-- Row 1: Method -->
+                
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <label>${I18N('CAMP_METHOD')}:</label>
-                    <select id="hwh_method" onchange="HWH_CampAuto_API.updateName(); HWH_CampAuto_API.applyVipRules(); HWH_CampAuto_API.autoSave()"
+                    <select id="hwh_method" onchange="HWH_CampAuto_API.updateName(); HWH_CampAuto_API.applyVipRules(); HWH_CampAuto_API.autoSave()" 
                         style="width: 140px; background: #170d07; color: #fce1ac; border: 1px solid #cf9250; padding: 2px;">
                         ${methodOptions}
                     </select>
                 </div>
 
-                <!-- Row 2: Mission ID + Menu -->
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <label style="width: 60px;">${I18N('CAMP_MISSION')}:</label>
-                    <input type="number" id="hwh_mission_id"
-                        oninput="HWH_CampAuto_API.updateName(); HWH_CampAuto_API.applyVipRules(); HWH_CampAuto_API.autoSave()"
-                        value="${settings.missionId || ''}"
-                        placeholder="ID"
+                    <input type="number" id="hwh_mission_id" 
+                        oninput="HWH_CampAuto_API.updateName(); HWH_CampAuto_API.applyVipRules(); HWH_CampAuto_API.autoSave()" 
+                        value="${settings.missionId || ''}" 
+                        placeholder="ID" 
                         style="width: 60px; background: #170d07; color: #fce1ac; border: 1px solid #cf9250; text-align: center;">
-
+                    
                     <div onclick="HWH_CampAuto_API.openMenu()" class="PopUp_btnGap blue" style="flex-grow: 1; cursor: pointer; padding: 1px;">
                         <div class="PopUp_btnPlate" style="padding: 3px; font-size: 11px; height: 16px;">${I18N('CAMP_BTN_MENU')}</div>
                     </div>
@@ -263,7 +345,6 @@
 
                 <div id="hwh_mission_name_display" style="text-align: center; color: #f0e68c; font-style: italic; font-size: 11px; min-height: 14px;">...</div>
 
-                <!-- Row 3: Reps + Force Raid -->
                 <div style="display: flex; align-items: center; gap: 5px;">
                     <label style="width: 60px;">${I18N('CAMP_REPS')}:</label>
                     <input type="number" id="hwh_repetitions" value="${settings.reps || 1}" onchange="HWH_CampAuto_API.autoSave()"
@@ -273,7 +354,6 @@
 
                 <hr style="border: 0; border-top: 1px solid #ce976755; width: 100%; margin: 2px 0;">
 
-                <!-- Automation Settings -->
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                     <label title="Auto-start energy">${I18N('CAMP_ENERGY')}</label>
                     <input type="number" id="hwh_energy_threshold" value="${settings.energyThreshold || 120}" onchange="HWH_CampAuto_API.autoSave()"
@@ -294,7 +374,6 @@
 
                 <div id="hwh_camp_status" style="text-align: center; color: #88ff88; font-weight: bold; font-size: 11px; min-height: 15px;"></div>
 
-                <!-- Main Action Buttons -->
                 <div style="display: flex; gap: 5px; margin-top: 5px;">
                     <div onclick="HWH_CampAuto_API.run()" class="PopUp_btnGap green" style="flex: 1; cursor: pointer;">
                         <div class="PopUp_btnPlate" style="font-weight: bold;">${I18N('CAMP_BTN_START')}</div>
@@ -304,7 +383,6 @@
                     </div>
                 </div>
 
-                <!-- Profiles -->
                 <div style="text-align: center; margin-top: 5px;">
                     <span style="font-size: 10px; color: #888;">${I18N('CAMP_PROFILES')}</span>
                     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin: 2px auto; width: 90%;">
@@ -314,7 +392,7 @@
                             </div>
                         `).join('')}
                     </div>
-
+                    
                     <div style="display: flex; gap: 8px; justify-content: center; margin-top: 8px; align-items: center;">
                         <span onclick="HWH_CampAuto_API.exportData()" style="cursor: pointer; font-size: 10px; text-decoration: underline; color: #ce9767;">${I18N('CAMP_BTN_EXPORT')}</span>
                         <span onclick="HWH_CampAuto_API.importData()" style="cursor: pointer; font-size: 10px; text-decoration: underline; color: #ce9767;">${I18N('CAMP_BTN_IMPORT')}</span>
@@ -339,8 +417,8 @@
             }
         }, 3000);
 
-        await popup.confirm(html, [{ result: false, isClose: true }]);
-
+        await popup.confirm(html, [{ result: false, isClose: true }]); 
+        
         updateMissionNameDisplay();
         applyVip5Rules();
     }
@@ -377,15 +455,15 @@
     }
 
     async function loadProfileWrapper(n) {
-        const { getUserInfo, setProgress, I18N } = unsafeWindow.HWHFuncs;
-        const userId = getUserInfo()?.id;
+        const { setProgress, I18N } = unsafeWindow.HWHFuncs;
+        const userId = await getUserId();
         const allSettings = await db.get(userId, {});
         const pData = allSettings.campaignAutomator?.profiles?.[n];
-
+        
         if (pData) {
             const vipInfo = await checkVipStatus();
-
-            // Downgrade Logic
+            
+            // Downgrade Logic (Raid Multi -> Raid Single -> Skip)
             let method = pData.method;
             if (method === 'raid_multi' && !vipInfo.canRaidMulti) method = 'raid_single';
             if (method === 'raid_single' && !vipInfo.canRaidSingle && !pData.forceRaid) method = 'skip_battle';
@@ -403,7 +481,7 @@
                 setChk('hwh_force_raid', pData.forceRaid || false);
                 handleForceRaidChange(true);
             }
-
+            
             updateMissionNameDisplay();
             applyVip5Rules();
             saveCurrentStateUI();
@@ -413,7 +491,6 @@
         }
     }
 
-    // Point 9: Force Raid Logic (Corrected)
     function handleForceRaidChange(skipSave = false) {
         const I18N = unsafeWindow.HWHFuncs.I18N;
         const checkbox = document.getElementById('hwh_force_raid');
@@ -430,17 +507,11 @@
                 opt.text = I18N('CAMP_OPT_RAID1');
                 select.add(opt);
             }
-            // Only switch if current is skip, as requested
             if (select.value === 'skip_battle') {
                 select.value = 'raid_single';
             }
-        } else {
-            // If unchecked, we don't remove the option immediately to avoid UI jumping,
-            // but if the user was on raid_single and they are VIP0, they might want to switch back.
-            // However, the prompt says "maintain the same function... because Raid x1 is already there".
-            // So we do nothing on uncheck regarding selection, unless it's invalid.
         }
-
+        
         if (!skipSave) saveCurrentStateUI();
     }
 
@@ -448,11 +519,11 @@
      * @AI-REFERENCE: MISSION SELECTOR
      */
     async function openMissionSelectorPopup() {
-        const { popup, getUserInfo, I18N } = unsafeWindow.HWHFuncs;
-        const userId = getUserInfo()?.id;
+        const { popup, I18N } = unsafeWindow.HWHFuncs;
+        const userId = await getUserId();
         const settings = await getSettings(userId);
         const favorites = settings.favorites || [];
-
+        
         const allMissions = Object.values(unsafeWindow.lib.data.mission)
             .filter(m => m.id < 1000)
             .map(m => ({
@@ -464,9 +535,9 @@
             const container = document.getElementById('hwh_sel_list');
             if(!container) return;
             container.innerHTML = "";
-
-            const filtered = allMissions.filter(m =>
-                m.id.toString().includes(filter) ||
+            
+            const filtered = allMissions.filter(m => 
+                m.id.toString().includes(filter) || 
                 m.name.toLowerCase().includes(filter.toLowerCase())
             );
 
@@ -497,16 +568,16 @@
             div.style.cssText = "display: flex; flex-direction: column; height: 350px; width: 260px; gap: 8px; color: #fce1ac;";
             div.innerHTML = `
                 <h3 style="text-align:center; margin:0; font-size: 14px;">${I18N('CAMP_SEL_TITLE')}</h3>
-                <input type="text" id="hwh_sel_search" placeholder="${I18N('CAMP_SEL_SEARCH')}"
+                <input type="text" id="hwh_sel_search" placeholder="${I18N('CAMP_SEL_SEARCH')}" 
                     style="width: 100%; padding: 4px; background: #170d07; color: #fce1ac; border: 1px solid #cf9250; box-sizing: border-box;">
                 <div id="hwh_sel_list" style="flex-grow: 1; overflow-y: auto; border: 1px solid #ce976755;"></div>
-
+                
                 <div onclick="document.getElementById('hwh_sel_close_btn').click()" class="PopUp_btnGap red" style="cursor: pointer;">
                     <div class="PopUp_btnPlate" style="font-weight: bold;">${I18N('CAMP_BTN_CLOSE')}</div>
                 </div>
                 <button id="hwh_sel_close_btn" style="display:none;"></button>
             `;
-
+            
             div.querySelector('#hwh_sel_search').addEventListener('input', (e) => renderList(e.target.value));
             div.querySelector('#hwh_sel_close_btn').addEventListener('click', () => {
                 complete(false);
@@ -526,10 +597,10 @@
     }
 
     async function toggleFavoriteMission(id) {
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         const allSettings = await db.get(userId, {});
         let favs = allSettings.campaignAutomator?.favorites || [];
-
+        
         const isFavNow = !favs.includes(id);
         const starEl = document.getElementById(`fav_star_${id}`);
         if (starEl) {
@@ -539,11 +610,11 @@
 
         if (isFavNow) favs.push(id);
         else favs = favs.filter(x => x !== id);
-
+        
         if (!allSettings.campaignAutomator) allSettings.campaignAutomator = {};
         allSettings.campaignAutomator.favorites = favs;
         await db.set(userId, allSettings);
-
+        
         setTimeout(() => {
             const searchVal = document.getElementById('hwh_sel_search')?.value || "";
             if (unsafeWindow.HWH_CampAuto_API.renderSelector) unsafeWindow.HWH_CampAuto_API.renderSelector(searchVal);
@@ -556,7 +627,7 @@
     async function runAutomationSequence() {
         if (isAutomationRunning) return;
         isAutomationRunning = true;
-
+        
         const { Send, Calc, HWHFuncs } = unsafeWindow;
         const I18N = HWHFuncs.I18N;
         const statusDiv = document.getElementById('hwh_camp_status');
@@ -566,16 +637,17 @@
         };
 
         await saveCurrentStateUI();
-
-        const userId = HWHFuncs.getUserInfo()?.id;
+        
+        const userId = await getUserId();
         const settings = await getSettings(userId);
 
         let method = settings.method;
         const missionIdStr = String(settings.missionId);
         const reps = parseInt(settings.reps) || 1;
 
-        // Point 9: Engine Logic - NO OVERRIDE. Trust the method.
-        // If user selected Skip, we do Skip. If Raid, we do Raid.
+        if (settings.forceRaid && method === 'skip_battle') {
+            method = 'raid_single';
+        }
 
         let success = false;
 
@@ -594,7 +666,7 @@
 
             for (const mId of missionList) {
                 if (isNaN(mId)) continue;
-
+                
                 if (method.startsWith('raid')) {
                     const times = (method === 'raid_multi') ? reps : 1;
                     const loopCount = (method === 'raid_multi') ? 1 : reps;
@@ -607,14 +679,14 @@
                         }
                         await new Promise(r => setTimeout(r, 300));
                     }
-                } else {
-                    const args = {
-                        id: mId,
-                        heroes: teamGetAll.mission.filter(id => id < 6000),
-                        pet: teamGetAll.mission.filter(id => id >= 6000).pop(),
-                        favor: teamGetFavor.mission
+                } else { 
+                    const args = { 
+                        id: mId, 
+                        heroes: teamGetAll.mission.filter(id => id < 6000), 
+                        pet: teamGetAll.mission.filter(id => id >= 6000).pop(), 
+                        favor: teamGetFavor.mission 
                     };
-                    const iterations = (method === 'sequence') ? 1 : reps;
+                    const iterations = (method === 'sequence') ? 1 : reps; 
 
                     for (let i = 0; i < iterations; i++) {
                         updateStatus(`${I18N('CAMP_STATUS_BATTLE')} ${mId} (${i+1}/${iterations})...`);
@@ -631,7 +703,7 @@
 
             updateStatus(I18N('CAMP_STATUS_QUESTS'));
             await collectQuestRewards();
-
+            
             if (settings.autoSyncEnabled) {
                 const energy = await getEnergy();
                 if (energy < settings.energyThreshold) {
@@ -648,8 +720,7 @@
             success = false;
         } finally {
             isAutomationRunning = false;
-
-            // Auto-Loop Logic
+            
             if (success && settings.autoStartEnabled) {
                 const currentEnergy = await getEnergy();
                 if (currentEnergy >= settings.energyThreshold) {
@@ -678,7 +749,7 @@
     }
 
     async function saveCurrentStateUI(profileIndex = null) {
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         if (!userId) return;
 
         const el = (id) => document.getElementById(id);
@@ -692,14 +763,14 @@
             autoStartEnabled: el('hwh_auto_start_toggle').checked,
             autoSyncEnabled: el('hwh_auto_sync_toggle').checked,
         };
-
+        
         if (el('hwh_force_raid')) {
             uiState.forceRaid = el('hwh_force_raid').checked;
         }
 
         const allSettings = await db.get(userId, {});
         if (!allSettings.campaignAutomator) allSettings.campaignAutomator = {};
-
+        
         Object.assign(allSettings.campaignAutomator, uiState);
 
         if (profileIndex) {
@@ -714,10 +785,10 @@
         const input = document.getElementById('hwh_mission_id');
         const display = document.getElementById('hwh_mission_name_display');
         if (!input || !display) return;
-
+        
         const val = input.value;
         if (!val) { display.innerText = "..."; return; }
-
+        
         if (val.includes(',') || val.includes('-')) {
             display.innerText = "Sequence Mode";
             return;
@@ -749,25 +820,29 @@
     }
 
     async function checkVipStatus() {
-        const inventory = await unsafeWindow.Caller.send("inventoryGet");
-        const userInfo = unsafeWindow.HWHFuncs.getUserInfo();
-        const hasTicket = inventory.consumable && inventory.consumable[151] > 0;
-        const vipPoints = parseInt(userInfo.vipPoints);
+        const data = await unsafeWindow.Caller.send(['inventoryGet', 'userGetInfo']);
+        const inventory = data[0];
+        const userInfo = data[1] || unsafeWindow.HWHFuncs.getUserInfo() || { vipPoints: 0 };
+        
+        const hasTicket = inventory?.consumable?.[151] > 0;
+        const vipPoints = parseInt(userInfo.vipPoints || 0);
+        
         const vipLevels = unsafeWindow.lib.data.level.vip;
         let vipLvl = 0;
         for (const lvl of Object.values(vipLevels)) {
             if (vipPoints >= lvl.vipPoints) vipLvl = lvl.level;
         }
-        return {
-            level: vipLvl,
+        return { 
+            level: vipLvl, 
             hasTicket: hasTicket,
             canRaidSingle: vipLvl >= 1 || hasTicket,
-            canRaidMulti: vipLvl >= 5 || hasTicket
+            canRaidMulti: vipLvl >= 5 || hasTicket,
+            userId: userInfo.id
         };
     }
 
     function parseSequence(str) {
-        return str.replace(/ /g, '').replace(/(\d+)-(\d+)/g, (match, start, end) =>
+        return str.replace(/ /g, '').replace(/(\d+)-(\d+)/g, (match, start, end) => 
             Array.from({ length: end - start + 1 }, (_, i) => parseInt(start) + i).join(',')
         ).split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id) && id > 0);
     }
@@ -779,9 +854,9 @@
 
     async function backgroundEnergyCheck(runIfReady = false) {
         if (isAutomationRunning) return;
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         const settings = await getSettings(userId);
-
+        
         if (!settings.autoStartEnabled) return;
 
         const energy = await getEnergy();
@@ -809,7 +884,7 @@
     }
 
     async function exportData() {
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         const allSettings = await db.get(userId, {});
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allSettings.campaignAutomator || {}, null, 2));
         const downloadAnchorNode = document.createElement('a');
@@ -830,7 +905,7 @@
             reader.onload = async readerEvent => {
                 try {
                     const content = JSON.parse(readerEvent.target.result);
-                    const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+                    const userId = await getUserId();
                     const allSettings = await db.get(userId, {});
                     allSettings.campaignAutomator = content;
                     await db.set(userId, allSettings);
@@ -847,18 +922,18 @@
     async function importWebProfile(key) {
         const url = WEB_PROFILES[key];
         if (!url) return;
-
+        
         unsafeWindow.HWHFuncs.setProgress(`Fetching ${key}...`, false);
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error("Network error");
             const content = await response.json();
-
-            const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+            
+            const userId = await getUserId();
             const allSettings = await db.get(userId, {});
             allSettings.campaignAutomator = content;
             await db.set(userId, allSettings);
-
+            
             unsafeWindow.HWHFuncs.setProgress(`${key} Imported! Re-open popup.`, true);
             unsafeWindow.HWHFuncs.popup.hide();
         } catch (e) {
@@ -869,7 +944,7 @@
 
     // --- Selectors Logic ---
     async function selectMissionFromList(id) {
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         const settings = await getSettings(userId);
         settings.missionId = id;
         const allSettings = await db.get(userId, {});
@@ -880,10 +955,10 @@
     }
 
     async function toggleFavoriteMission(id) {
-        const userId = unsafeWindow.HWHFuncs.getUserInfo()?.id;
+        const userId = await getUserId();
         const allSettings = await db.get(userId, {});
         let favs = allSettings.campaignAutomator?.favorites || [];
-
+        
         const isFavNow = !favs.includes(id);
         const starEl = document.getElementById(`fav_star_${id}`);
         if (starEl) {
@@ -893,11 +968,11 @@
 
         if (isFavNow) favs.push(id);
         else favs = favs.filter(x => x !== id);
-
+        
         if (!allSettings.campaignAutomator) allSettings.campaignAutomator = {};
         allSettings.campaignAutomator.favorites = favs;
         await db.set(userId, allSettings);
-
+        
         setTimeout(() => {
             const searchVal = document.getElementById('hwh_sel_search')?.value || "";
             if (unsafeWindow.HWH_CampAuto_API.renderSelector) unsafeWindow.HWH_CampAuto_API.renderSelector(searchVal);
