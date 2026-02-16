@@ -31,7 +31,7 @@
     const FALLBACK_DEFAULT_PROFILE = {
         name: "Default",
         weights: { hp: 1.0, energy: 0.3, buff: 1.0, deadTitan: 20 },
-        thresholds: { profile4: 81, profile3: 56, profile2: 29, baseProfile: 2 }
+        thresholds: { profile4: 81, profile3: 56, profile2: 29, baseProfile: 3 }
     };
 
     let lastAppliedProfile = null;
