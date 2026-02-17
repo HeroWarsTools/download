@@ -17,13 +17,13 @@
     const DATA_SOURCE = 'HWH_TitanStats';
     const UPDATE_INTERVAL_MS = 2000;
     const CONTAINER_ID = 'hwh-titan-live-monitor-content';
-    
+
     // DB CONFIGURATION
     const DB_NAME = "HWH_TitanMonitor_DB";
     const DB_VERSION = 2;
     const STORE_NAME = "profile";
     const OLD_STORE_NAME = "profiles";
-    
+
     const ACTIVE_PROFILE_KEY = 'active_profile';
     const CUSTOM_DEFAULT_KEY = 'HWH_TitanMonitor_CustomDefault';
 
@@ -37,7 +37,7 @@
 
     let lastAppliedProfile = null;
     let currentTitanSettings = { ...FALLBACK_DEFAULT_PROFILE };
-    
+
     // --- STATE VARIABLES ---
     let isStartModeActive = true; // Starts active by default
     let currentStabilityCount = 0;
@@ -156,7 +156,7 @@
             if (isStartModeActive && s.startStrategy.startProfile > 0) {
                 const startProf = s.startStrategy.startProfile;
                 const targetCount = s.startStrategy.stabilityCount;
-                
+
                 // Force Start Profile
                 profileToApply = startProf;
 
@@ -200,7 +200,7 @@
         const score = RiskEngine.calculate(data, currentTitanSettings);
         RiskEngine.handleProfileSync(score, data);
         const riskColor = RiskEngine.getColor(score);
-        
+
         // Status Indicator Logic
         let statusHTML = '';
         if (isStartModeActive && currentTitanSettings.startStrategy.startProfile > 0) {
@@ -410,16 +410,16 @@
                             const response = await fetch(rawUrl);
                             if (!response.ok) throw new Error(`Network Error: ${response.statusText}`);
                             const data = await response.json();
-                            updateDOM(data); 
-                            currentTitanSettings = data; 
+                            updateDOM(data);
+                            currentTitanSettings = data;
                             unsafeWindow.HWHFuncs.popup.show(`Imported from ${label}!`, 1500);
                         } catch (e) { alert(`Web Import Failed: ${e.message}`); }
                     };
                 }
             };
             setupWebImport('ticonf_import_web1', 'https://github.com/HeroWarsTools/dungeon/blob/main/TiConf.json', 'WEB');
-            setupWebImport('ticonf_import_web2', 'https://github.com/HeroWarsTools/dungeon/blob/main/TiConf.json', 'W2');
-            setupWebImport('ticonf_import_web3', 'https://github.com/HeroWarsTools/dungeon/blob/main/TiConf.json', 'W3');
+            setupWebImport('ticonf_import_web2', 'https://github.com/HeroWarsTools/dungeon/blob/main/TiConf2.json', 'W2');
+            setupWebImport('ticonf_import_web3', 'https://github.com/HeroWarsTools/dungeon/blob/main/TiConf3.json', 'W3');
 
             const exportBtn = document.getElementById('ticonf_export_file');
             if (exportBtn) {
@@ -500,7 +500,7 @@
             } catch (e) { /* ignore */ }
         }
         // Merge loaded profile with default structure to ensure startStrategy exists
-        currentTitanSettings = loadedProfile 
+        currentTitanSettings = loadedProfile
             ? { ...FALLBACK_DEFAULT_PROFILE, ...loadedProfile, startStrategy: { ...FALLBACK_DEFAULT_PROFILE.startStrategy, ...(loadedProfile.startStrategy || {}) } }
             : { ...FALLBACK_DEFAULT_PROFILE };
 
