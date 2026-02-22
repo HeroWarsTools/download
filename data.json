@@ -97,5 +97,14 @@
     "coloreTestoCasella": "#ffff00",
     "coloreBottone": "#8000ff",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Server + Account Switch",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20TimeB%20server_switch.user.js",
+    "descrizione": "Switch accounts and server automatically by timer and by email",
+    "coloreCasella": "#0000ff",
+    "coloreTestoCasella": "#ffff00",
+    "coloreBottone": "#8000ff",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
