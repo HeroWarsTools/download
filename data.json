@@ -115,5 +115,14 @@
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Auto ⚡Camp Auto⚡",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Campaign_auto_Select.user.js",
+    "descrizione": "support for ⚡Campaign Automat⚡ automating settings ",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
