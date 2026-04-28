@@ -46,7 +46,7 @@
   },
   {
     "titolo": "⚡Campaign Automat⚡",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HwH%20Ext%20CampAutom.4.0.user.js",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HwH%20Ext%20Camp%20Auto4.2(emeralds).user.js",
     "descrizione": "Automatically consume energy in the campaign on your favorite missions",
     "coloreCasella": "#d5bf99",
     "coloreTestoCasella": "#282828",
@@ -105,6 +105,15 @@
     "coloreCasella": "#0000ff",
     "coloreTestoCasella": "#ffff00",
     "coloreBottone": "#8000ff",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "1750 daily",
+    "link": "https://github.com/HeroWarsTools/dailies/raw/refs/heads/main/HWH%20Daily%20Dashboard(1750).user.js",
+    "descrizione": "Get 1750 activity with a few clicks - Requires ⚡Campaign Automat⚡",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
   }
 ]
