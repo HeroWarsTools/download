@@ -124,5 +124,14 @@
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "🔎🏝️ Island Path",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/island_path.user.js",
+    "descrizione": "🔎🏝️ Explore the island map in accurate and fast way 🔎🏝️",
+    "coloreCasella": "#bbf25e",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#a08518",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
