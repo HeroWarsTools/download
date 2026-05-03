@@ -133,5 +133,14 @@
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#a08518",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Auto Crafter",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/AutoCraft.user.js",
+    "descrizione": "Auto Craft Selected items",
+    "coloreCasella": "#dbdbdb",
+    "coloreTestoCasella": "#2d3d75",
+    "coloreBottone": "#b329e7",
+    "coloreTestoBottone": "#dde18e"
   }
 ]
