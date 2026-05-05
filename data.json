@@ -81,13 +81,13 @@
     "coloreTestoBottone": "#12ec00"
   },
   {
-    "titolo": "Craft Items",
-    "link": "https://zingery.ru/scripts/HWHCraftItemsExt.user.js",
-    "descrizione": "Craft items with 1 click",
-    "coloreCasella": "#ffffff",
-    "coloreTestoCasella": "#1f2937",
-    "coloreBottone": "#2563eb",
-    "coloreTestoBottone": "#ffffff"
+    "titolo": "🔝 Skills Upgrade 🔝",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/SkillsUpgrade.user.js",
+    "descrizione": "Automatic skills upgrade",
+    "coloreCasella": "#ffffd7",
+    "coloreTestoCasella": "#0a0697",
+    "coloreBottone": "#2dd1e3",
+    "coloreTestoBottone": "#f3fcba"
   },
   {
     "titolo": "Auto Account Switch",
@@ -108,7 +108,7 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "1750 daily",
+    "titolo": "1750 ⚡ daily",
     "link": "https://github.com/HeroWarsTools/dailies/raw/refs/heads/main/HWH%20Daily%20Dashboard(1750).user.js",
     "descrizione": "Get 1750 activity with a few clicks - Requires ⚡Campaign Automat⚡",
     "coloreCasella": "#ffffff",
@@ -135,12 +135,30 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "Auto Crafter",
+    "titolo": "Auto Crafter 💫",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/AutoCraft.user.js",
     "descrizione": "Auto Craft Selected items",
     "coloreCasella": "#dbdbdb",
     "coloreTestoCasella": "#2d3d75",
     "coloreBottone": "#b329e7",
     "coloreTestoBottone": "#dde18e"
+  },
+  {
+    "titolo": "🔮 Seer's game 🔮",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Seer_Game.user.js",
+    "descrizione": "do tasks of Seer with 1 click",
+    "coloreCasella": "#f5ede2",
+    "coloreTestoCasella": "#552761",
+    "coloreBottone": "#bebe8f",
+    "coloreTestoBottone": "#624e3c"
+  },
+  {
+    "titolo": "ᛉ Glyphs and runes ᛉ",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Glyph_Runes.user.js",
+    "descrizione": "Enchant Glyphs with less clicks",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
