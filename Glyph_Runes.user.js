@@ -3,7 +3,7 @@
 // @name:en          HWHGlyphAndRuneExt
 // @name:ru          HWHGlyphAndRuneExt
 // @namespace        HWHGlyphAndRuneExt
-// @version          1.1.2
+// @version          1.1.3
 // @description      Extension for HeroWarsHelper - Manage and Enchant Heroes Glyphs
 // @description:en   Extension for HeroWarsHelper - Manage and Enchant Heroes Glyphs
 // @description:ru   Расширение для HeroWarsHelper - Управление и улучшение символов героев
@@ -156,13 +156,14 @@
                         heroesList.push({
                             id: id,
                             name: heroName,
-                            maxedCount: maxedCount
+                            maxedCount: maxedCount,
+                            power: hero.power
                         });
                     }
                 }
             }
 
-            heroesList.sort((a, b) => a.name.localeCompare(b.name));
+            heroesList.sort((a, b) => b.power - a.power);
 
             let gridHtml = `<div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; max-height: 55vh; min-width: 800px; overflow-y: auto; padding: 5px; margin-top: 10px; scrollbar-width: thin; scrollbar-color: #774d10 transparent;">`;
             for (let h of heroesList) {
