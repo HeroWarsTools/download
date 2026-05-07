@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Dungeon Starter & Reload
 // @namespace    HWH.Addons.TabManager
-// @version      2.5.1 (Robust API Update)
+// @version      2.5.2 (Robust API Update)
 // @description  Unified automation: Tab Reload & Dungeon Starter with native HWH UI/Notifications.
 // @author       HWH Extension Architect & Gemini
 // @match        https://www.hero-wars.com/*
@@ -12,7 +12,7 @@
 // @run-at       document-start
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     // --- Configuration & State ---
@@ -232,26 +232,27 @@
         isDungeonRunning = true;
 
         const { setProgress } = unsafeWindow.HWHFuncs;
-        
+
         // --- 1. ROBUST API APPROACH (UpBestDungeon / HWH) ---
         if (unsafeWindow.HWHClasses?.executeDungeon) {
             setProgress('Auto-Dungeon: Starting (API)...', false);
             try {
                 const dung = new unsafeWindow.HWHClasses.executeDungeon(
-                    () => { 
-                        isDungeonRunning = false; 
-                        setProgress('Auto-Dungeon: Finished!', true); 
+                    () => {
+                        isDungeonRunning = false;
+                        setProgress('Auto-Dungeon: Finished!', true);
                     },
-                    (err) => { 
-                        isDungeonRunning = false; 
-                        setProgress('Auto-Dungeon: Error!', true); 
+                    (err) => {
+                        isDungeonRunning = false;
+                        setProgress('Auto-Dungeon: Error!', true);
                         console.error('[HWH Manager] API Dungeon Error:', err);
                     }
                 );
-                
+
                 // Some versions of HWH need titanit count passed to start()
                 const titanit = unsafeWindow.HWHFuncs.getInput?.('countTitanit') || 150;
                 dung.start(titanit);
+                console.log('%c[HWH Manager] Dungeon started successfully via API.', 'color: #00ff00; font-weight: bold;');
                 return; // Logic started, skip button search
             } catch (e) {
                 console.error('[HWH Manager] API call failed, falling back to buttons:', e);
