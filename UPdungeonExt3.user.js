@@ -15,6 +15,7 @@
 // @match			https://apps-1701433570146040.apps.fbsbx.com/*
 // @grant			GM_getValue
 // @grant			GM_setValue
+// @grant			GM_xmlhttpRequest
 // @run-at			document-end
 // ==/UserScript==
 
@@ -474,25 +475,59 @@
 						});
 
 						// Web Import
-						document.getElementById('btn_web_import').addEventListener('click', async () => {
+						document.getElementById('btn_web_import').addEventListener('click', () => {
 							setProgress('Fetching from Web...', false);
-							try {
-								const resp = await fetch('https://github.com/HeroWarsTools/dungeon/raw/refs/heads/main/W1Ext3.json');
-								const data = await resp.json();
-								if (data.profiles) {
-									savedProfiles = data.profiles;
-									saveProfilesToStorage();
-								}
-								if (data.config) {
-									window.Evo1LoadDOM(data.config);
-									window.Evo1SaveLogic();
-								}
-								showToast('Web Profiles Loaded!', 'rgba(27, 164, 129, 0.9)');
-								hideProgress();
-							} catch (e) {
-								console.error(e);
-								showToast('Fetch Failed!', 'rgba(164, 27, 27, 0.9)');
-								hideProgress();
+							const fetchUrl = 'https://raw.githubusercontent.com/HeroWarsTools/dungeon/refs/heads/main/W1Ext3.json';
+							if (typeof GM_xmlhttpRequest !== 'undefined') {
+								GM_xmlhttpRequest({
+									method: 'GET',
+									url: fetchUrl,
+									onload: function(response) {
+										try {
+											if (response.status !== 200) throw new Error('HTTP Status ' + response.status);
+											const data = JSON.parse(response.responseText);
+											if (data.profiles) {
+												savedProfiles = data.profiles;
+												saveProfilesToStorage();
+											}
+											if (data.config) {
+												window.Evo1LoadDOM(data.config);
+												window.Evo1SaveLogic();
+											}
+											showToast('Web Profiles Loaded!', 'rgba(27, 164, 129, 0.9)');
+										} catch (e) {
+											console.error(e);
+											showToast('Parse Failed!', 'rgba(164, 27, 27, 0.9)');
+										}
+										hideProgress();
+									},
+									onerror: function(error) {
+										console.error(error);
+										showToast('Fetch Failed!', 'rgba(164, 27, 27, 0.9)');
+										hideProgress();
+									}
+								});
+							} else {
+								// Fallback to fetch if GM_xmlhttpRequest is somehow not supported
+								fetch(fetchUrl)
+									.then(res => res.json())
+									.then(data => {
+										if (data.profiles) {
+											savedProfiles = data.profiles;
+											saveProfilesToStorage();
+										}
+										if (data.config) {
+											window.Evo1LoadDOM(data.config);
+											window.Evo1SaveLogic();
+										}
+										showToast('Web Profiles Loaded!', 'rgba(27, 164, 129, 0.9)');
+										hideProgress();
+									})
+									.catch(e => {
+										console.error(e);
+										showToast('Fetch Failed (CORS/CSP)!', 'rgba(164, 27, 27, 0.9)');
+										hideProgress();
+									});
 							}
 						});
 
