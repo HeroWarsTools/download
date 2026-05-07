@@ -3,7 +3,7 @@
 // @name:en			UpBestDungeonExt
 // @name:ru			UpBestDungeonExt
 // @namespace		UpBestDungeonExt
-// @version			0.1.7.4 (Integration Update)
+// @version			0.1.7.3 (ozzata_monoMult)
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -1367,9 +1367,7 @@
 			}
 		}
 
-		// --- EXPLICIT API EXPORT FOR EXTERNAL SCRIPTS ---
 		unsafeWindow.HWHClasses.executeDungeon = BestDungeon;
-		unsafeWindow.HWHClasses.DungeonUtils = DungeonUtils;
 
 		class SelectAttackPack {
 			constructor(heroStats, battle) { this.heroStats = heroStats; this.battle = structuredClone(battle); }
