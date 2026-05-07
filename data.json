@@ -169,5 +169,14 @@
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "💥Dungeon Starter",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/DungeonStarter.user.js",
+    "descrizione": "Suto Start Dungeon",
+    "coloreCasella": "#8a137e",
+    "coloreTestoCasella": "#dfea57",
+    "coloreBottone": "#8354bc",
+    "coloreTestoBottone": "#929511"
   }
 ]
