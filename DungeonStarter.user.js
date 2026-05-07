@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Dungeon Starter & Reload
 // @namespace    HWH.Addons.TabManager
-// @version      2.5.1
+// @version      2.5.1 (Robust API Update)
 // @description  Unified automation: Tab Reload & Dungeon Starter with native HWH UI/Notifications.
 // @author       HWH Extension Architect & Gemini
 // @match        https://www.hero-wars.com/*
@@ -12,7 +12,7 @@
 // @run-at       document-start
 // ==/UserScript==
 
-(function () {
+(function() {
     'use strict';
 
     // --- Configuration & State ---
@@ -29,12 +29,12 @@
     const loader = setInterval(() => {
         if (typeof unsafeWindow.HWHClasses !== 'undefined' && typeof unsafeWindow.HWHData !== 'undefined' && typeof unsafeWindow.HWHFuncs !== 'undefined') {
             clearInterval(loader);
-            setTimeout(init, 1500);
+            setTimeout(init, 3000);
         }
     }, 500);
 
     function init() {
-        console.log('%c[HWH Manager v2.5.0] Init.', 'color: #FFA500; font-weight: bold;');
+        console.log('%c[HWH Manager v2.5.1] Init.', 'color: #FFA500; font-weight: bold;');
 
         unsafeWindow.HWH_TabManager_TriggerSave = triggerAutoSave;
 
@@ -232,40 +232,70 @@
         isDungeonRunning = true;
 
         const { setProgress } = unsafeWindow.HWHFuncs;
-        setProgress('Auto-Dungeon: Searching...', false);
+        
+        // --- 1. ROBUST API APPROACH (UpBestDungeon / HWH) ---
+        if (unsafeWindow.HWHClasses?.executeDungeon) {
+            setProgress('Auto-Dungeon: Starting (API)...', false);
+            try {
+                const dung = new unsafeWindow.HWHClasses.executeDungeon(
+                    () => { 
+                        isDungeonRunning = false; 
+                        setProgress('Auto-Dungeon: Finished!', true); 
+                    },
+                    (err) => { 
+                        isDungeonRunning = false; 
+                        setProgress('Auto-Dungeon: Error!', true); 
+                        console.error('[HWH Manager] API Dungeon Error:', err);
+                    }
+                );
+                
+                // Some versions of HWH need titanit count passed to start()
+                const titanit = unsafeWindow.HWHFuncs.getInput?.('countTitanit') || 150;
+                dung.start(titanit);
+                return; // Logic started, skip button search
+            } catch (e) {
+                console.error('[HWH Manager] API call failed, falling back to buttons:', e);
+            }
+        }
 
-        // 1. Find the HWH MAIN MENU Button (class: scriptMenu_btnPlate)
-        // This ensures we don't click the popup button itself
+        // --- 2. FALLBACK: BUTTON CLICKING APPROACH ---
+        setProgress('Auto-Dungeon: Searching button...', false);
+
+        // Find the "Dungeon" button by searching for various known labels
         const menuBtns = document.querySelectorAll('.scriptMenu_btnPlate');
         const dungeonBtn = Array.from(menuBtns).find(el => {
             const txt = el.textContent.trim().toLowerCase();
-            return txt === 'dungeon' || txt === 'подземелье';
+            const title = el.parentElement?.title?.toLowerCase() || '';
+            // Match 'dungeon', 'dgn' (UpBestDungeon renaming), or Russian labels
+            return txt === 'dungeon' || txt === 'dgn' || txt === 'подземелье' || title.includes('dungeon');
         });
 
         if (dungeonBtn) {
+            console.log('%c[HWH Manager] Clicking "Dgn" button...', 'color: #00ffff; font-weight: bold;');
             dungeonBtn.click();
 
-            // 2. Wait 1 second for the HWH Popup to appear
+            // Wait 1 second for the HWH Confirmation Popup to appear
             setTimeout(() => {
-                // 3. Find the POPUP Button (class: PopUp_btnPlate)
                 const popBtns = document.querySelectorAll('.PopUp_btnPlate');
                 const runBtn = Array.from(popBtns).find(el => {
                     const txt = el.textContent.trim().toLowerCase();
-                    return txt === 'run' || txt === 'auto' || txt === 'запускай';
+                    return txt === 'run' || txt === 'auto' || txt === 'запускай' || txt === 'запускай!';
                 });
 
                 if (runBtn) {
+                    console.log('%c[HWH Manager] Clicking "Run" button in popup...', 'color: #00ffff; font-weight: bold;');
                     runBtn.click();
-                    setProgress('Auto-Dungeon: Executed!', true);
+                    setProgress('Auto-Dungeon: Executed via Click!', true);
+                    console.log('%c[HWH Manager] Dungeon started successfully via Click (Dgn/Run).', 'color: #00ff00; font-weight: bold;');
                 } else {
-                    setProgress('Auto-Dungeon: "Run" button not found!', true);
-                    console.warn('[HWH Dungeon] Popup "Run" button not found.');
+                    setProgress('Auto-Dungeon: Popup button not found!', true);
+                    console.warn('[HWH Manager] Popup button ("Run") not found after clicking "Dgn".');
                 }
                 isDungeonRunning = false;
-            }, 1000); // 1 second delay
+            }, 1000);
         } else {
-            setProgress('Auto-Dungeon: Menu button not found!', true);
-            console.warn('[HWH Dungeon] Menu "Dungeon" button not found.');
+            setProgress('Auto-Dungeon: Button not found!', true);
+            console.warn('[HWH Manager] Dungeon button ("Dgn") not found in menu.');
             isDungeonRunning = false;
         }
     }
