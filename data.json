@@ -10,7 +10,7 @@
   },
   {
     "titolo": "Dungeon Ext3",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/UPdungeonExt3",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/UPdungeonExt3.user.js",
     "descrizione": "Advanced Dungeon Automation Scriptsviluppatori.",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
@@ -19,7 +19,7 @@
   },
   {
     "titolo": "Dungeon Panel Ext3",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor%20Ext3",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20MonitorExt3.user.js",
     "descrizione": "Panel and complementary utility for the dungeon script",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
