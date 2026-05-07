@@ -178,5 +178,14 @@
     "coloreTestoCasella": "#dfea57",
     "coloreBottone": "#8354bc",
     "coloreTestoBottone": "#929511"
+  },
+  {
+    "titolo": "🔎 Stage Rewards 🔎",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/StageRewards.user.js",
+    "descrizione": "Auto Collect items from Stages like weaving pattern or new character event",
+    "coloreCasella": "#423f83",
+    "coloreTestoCasella": "#ff8000",
+    "coloreBottone": "#50c0a2",
+    "coloreTestoBottone": "#ffffff"
   }
 ]
