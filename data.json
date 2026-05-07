@@ -9,8 +9,8 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "Dungeon",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWHBestDungeonExt-0.1.5mod(g_profiles_RC10).user.js",
+    "titolo": "Dungeon Ext3",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/UPdungeonExt3",
     "descrizione": "Advanced Dungeon Automation Scriptsviluppatori.",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
@@ -18,8 +18,8 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "Dungeon Panel",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor-3.2.2(ok).user.js",
+    "titolo": "Dungeon Panel Ext3",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor%20Ext3",
     "descrizione": "Panel and complementary utility for the dungeon script",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
@@ -30,9 +30,9 @@
     "titolo": "Dungeon Updated",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/UP-Best-dungeon.user.js",
     "descrizione": "smart dungeon script updated with new game update",
-    "coloreCasella": "#8000ff",
-    "coloreTestoCasella": "#ffff80",
-    "coloreBottone": "#0000ff",
+    "coloreCasella": "#63ceed",
+    "coloreTestoCasella": "#7a1386",
+    "coloreBottone": "#8000ff",
     "coloreTestoBottone": "#ffffff"
   },
   {
@@ -56,11 +56,11 @@
   {
     "titolo": "Dungeon Panel 8.02",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20titanMonitor.user.js",
-    "descrizione": "dungeon panel for version 1.7 and above",
+    "descrizione": "dungeon panel for version 1.7 and above\n( use with dungeon updated )",
     "coloreCasella": "#bbffff",
-    "coloreTestoCasella": "#000000",
-    "coloreBottone": "#86ffed",
-    "coloreTestoBottone": "#0000ff"
+    "coloreTestoCasella": "#793172",
+    "coloreBottone": "#8000ff",
+    "coloreTestoBottone": "#ffffff"
   },
   {
     "titolo": "Auto Buyer",
