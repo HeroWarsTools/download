@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.1
+// @version			0.0.22.Evo1.2
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -13,6 +13,8 @@
 // @icon64			https://zingery.ru/scripts/VaultBoyIco64.png
 // @match			https://www.hero-wars.com/*
 // @match			https://apps-1701433570146040.apps.fbsbx.com/*
+// @grant			GM_getValue
+// @grant			GM_setValue
 // @run-at			document-end
 // ==/UserScript==
 
@@ -135,235 +137,32 @@
 	function loadProfilesFromStorage() { const storedProfiles = localStorage.getItem('DungeoExt3_Profiles_v1'); if (storedProfiles) { savedProfiles = JSON.parse(storedProfiles); console.log('Fix it Dungeon: Profiles loaded from storage.'); } }
 	loadProfilesFromStorage();
 	loadCurrentConfig();
+
+	if (typeof GM_getValue !== 'undefined' && GM_getValue('DungeoExt3_AutoLoadDefaults', false) === true) {
+		setTimeout(() => {
+			const stored = GM_getValue('DungeoExt3_UserDefaults_v1');
+			if (stored) {
+				try {
+					const data = JSON.parse(stored);
+					if (data.config) {
+						Object.assign(DungeoExt3_Config, data.config);
+						saveCurrentConfig();
+						saveConfig();
+					}
+					if (data.profiles) {
+						savedProfiles = data.profiles;
+						saveProfilesToStorage();
+					}
+					console.log('Fix it Dungeon: Auto-loaded default configuration after 19s.');
+				} catch (e) { }
+			}
+		}, 19000);
+	}
 	// --- END: Profile and Configuration Management ---
 
 
-	let configMenuAdded = false;
 
-	function addConfigFieldsToMenu() {
-		if (!HWHClasses.ScriptMenu || !HWHClasses.ScriptMenu.getInst) return;
-		const menu = HWHClasses.ScriptMenu.getInst();
-		if (!menu || !menu.mainMenu) return;
 
-		let allInputs = {};
-
-		function updateUIFromConfig() {
-			if (!configMenuAdded) return;
-			Object.keys(allInputs).forEach(key => {
-				let value = DungeoExt3_Config[key];
-				if (key === 'timeoutFix') {
-					value /= 1000;
-				}
-				allInputs[key].value = value;
-			});
-		}
-
-		function createCustomNumericInput(name, title, initialValue, step, onChange) {
-			const container = document.createElement('div'); container.className = 'custom-numeric-container';
-			const input = document.createElement('input');
-			input.type = 'text'; input.name = name; input.title = title; input.value = initialValue; input.className = 'custom-numeric-input';
-			Object.assign(input.style, { color: '#FFFFFF', textAlign: 'center', border: '1px solid #777', background: '#333', padding: '5px', borderRadius: '4px' });
-			const btnMinus = document.createElement('span'); btnMinus.className = 'numeric-step-btn btn-minus'; btnMinus.textContent = '-';
-			const btnPlus = document.createElement('span'); btnPlus.className = 'numeric-step-btn btn-plus'; btnPlus.textContent = '+';
-			container.append(input, btnMinus, btnPlus);
-			const updateValue = (newValue) => {
-				if (newValue < 0 && !name.startsWith('decision_')) newValue = 0;
-				input.value = Number.isInteger(step) ? newValue : parseFloat(newValue).toFixed(2);
-				input.dispatchEvent(new Event('change'));
-			};
-			btnMinus.addEventListener('click', () => updateValue(parseFloat(input.value) - step));
-			btnPlus.addEventListener('click', () => updateValue(parseFloat(input.value) + step));
-			input.addEventListener('change', () => onChange(input.value));
-			return { container, input };
-		}
-
-		function addSettingRow(label, configKey, step) {
-			const row = document.createElement('div');
-			row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center'; row.style.padding = '3px 0';
-			const labelEl = document.createElement('span'); labelEl.textContent = label; labelEl.style.fontWeight = '300';
-			const initialValue = configKey === 'timeoutFix' ? DungeoExt3_Config[configKey] / 1000 : DungeoExt3_Config[configKey];
-			const { container, input } = createCustomNumericInput(configKey, label, initialValue, step, (val) => {
-				let processedVal = Number.isInteger(step) ? parseInt(val, 10) : parseFloat(val);
-				if (configKey === 'timeoutFix') processedVal *= 1000;
-				DungeoExt3_Config[configKey] = processedVal || DEFAULT_CONFIG[configKey];
-				saveCurrentConfig();
-			});
-			row.appendChild(labelEl); row.appendChild(container); menu.mainMenu.appendChild(row);
-			allInputs[configKey] = input;
-		}
-
-		function addLargeHeader(title) {
-			const header = menu.addHeader(title);
-			header.style.fontSize = '1.3em';
-		}
-
-		// --- Build the UI ---
-		addLargeHeader('Fix it Dungeon');
-		addSettingRow('Timeout (s)', 'timeoutFix', 1);
-		addSettingRow('Count Fix', 'countFix', 10);
-		addSettingRow('Timer Fisso', 'fixedTimerValue', 0.2);
-		addSettingRow('Timer Max (Battle)', 'maxTimerValue', 10);
-
-		addLargeHeader('Battle Sim');
-		addSettingRow('Test Battles', 'sim_countTestBattle', 2);
-		addSettingRow('Auto Retries', 'sim_countAutoBattle', 2);
-
-		addLargeHeader('Genetic Algo');
-		addSettingRow('Population Size', 'ga_populationSize', 1);
-		addSettingRow('Generations', 'ga_generations', 10);
-		addSettingRow('Mutation Rate', 'ga_mutationRate', 0.01);
-		addSettingRow('Elite Count', 'ga_eliteCount', 1);
-
-		addLargeHeader('Health : Energy');
-		const weightContainer = document.createElement('div'); weightContainer.style.display = 'flex'; weightContainer.style.justifyContent = 'space-around'; weightContainer.style.padding = '5px 0';
-		const hpWidget = createCustomNumericInput('decision_hpWeight', 'HP Weight', DungeoExt3_Config.decision_hpWeight, 5, (val) => { DungeoExt3_Config.decision_hpWeight = parseInt(val, 10) || 25; saveCurrentConfig(); });
-		const energyWidget = createCustomNumericInput('decision_energyWeight', 'Energy Weight', DungeoExt3_Config.decision_energyWeight, 0.5, (val) => { DungeoExt3_Config.decision_energyWeight = parseFloat(val) || 1; saveCurrentConfig(); });
-		weightContainer.appendChild(hpWidget.container); weightContainer.appendChild(energyWidget.container); menu.mainMenu.appendChild(weightContainer);
-		allInputs['decision_hpWeight'] = hpWidget.input;
-		allInputs['decision_energyWeight'] = energyWidget.input;
-
-		// --- Action Buttons ---
-		function createButtonRow() { const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '5px'; row.style.marginTop = '5px'; menu.mainMenu.appendChild(row); return row; }
-
-		const row1Buttons = createButtonRow();
-		const importButton = menu.addButton({ name: 'Import', color: 'beige' }); row1Buttons.appendChild(importButton);
-		const exportButton = menu.addButton({ name: 'Export', color: 'beige' }); row1Buttons.appendChild(exportButton);
-
-		const row2Buttons = createButtonRow();
-		const resetButton = menu.addButton({ name: 'Reset', color: 'red' }); row2Buttons.appendChild(resetButton);
-		const saveToButton = menu.addButton({ name: 'Save to...', color: 'green' }); row2Buttons.appendChild(saveToButton);
-
-		for (let i = 0; i < 8; i += 2) {
-			const rowProfileButtons = createButtonRow();
-			const p1 = menu.addButton({ name: `P${i + 1}`, color: 'blue' }); p1.addEventListener('click', () => loadProfile(i + 1)); rowProfileButtons.appendChild(p1);
-			const p2 = menu.addButton({ name: `P${i + 2}`, color: 'blue' }); p2.addEventListener('click', () => loadProfile(i + 2)); rowProfileButtons.appendChild(p2);
-		}
-
-		// --- Button Logic ---
-		function loadProfile(profileNumber) {
-			const profileKey = `profile${profileNumber}`;
-			if (savedProfiles[profileKey]) {
-				Object.assign(DungeoExt3_Config, savedProfiles[profileKey]);
-				saveCurrentConfig();
-				updateUIFromConfig();
-
-				// Mostra un messaggio non invasivo nella barra di stato
-				setProgress(`Profile ${profileNumber} loaded.`, false);
-				// Nasconde il messaggio dopo 2 secondi
-				setTimeout(hideProgress, 2800);
-
-			} else {
-				// Messaggio non invasivo anche per i profili vuoti
-				setProgress(`Profile ${profileNumber} is empty.`, false);
-				setTimeout(hideProgress, 4000);
-			}
-		}
-
-		// ==========================================================
-		// --- NUOVO: "Ponte di Ritorno" per l'Auto-Profiling ---
-		// Questo codice ascolta i comandi inviati dallo "Script Pannello".
-		document.addEventListener('changeDungeonProfile', function (event) {
-			const profileNumber = event.detail.profileNumber;
-			if (profileNumber) {
-				console.log(`%c[AutoProfiler] Received command to switch to Profile ${profileNumber}`, 'color: #f0a');
-				loadProfile(profileNumber);
-			}
-		});
-		// ==========================================================
-
-		exportButton.addEventListener('click', () => {
-			const jsonString = JSON.stringify({ profiles: savedProfiles, lastUsed: DungeoExt3_Config }, null, 2);
-			const blob = new Blob([jsonString], { type: 'application/json' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a'); a.href = url; a.download = 'fix-it-dungeon-profiles.json';
-			document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-		});
-
-		importButton.addEventListener('click', () => {
-			const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.json,application/json';
-			fileInput.addEventListener('change', (event) => {
-				const file = event.target.files[0]; if (!file) return;
-				const reader = new FileReader();
-				reader.onload = (e) => {
-					try {
-						const importedData = JSON.parse(e.target.result);
-						if (importedData && importedData.profiles) {
-							if (confirm('Profiles file loaded. Overwrite all saved profiles and apply last used config?')) {
-								savedProfiles = importedData.profiles;
-								Object.assign(DungeoExt3_Config, importedData.lastUsed || Object.values(importedData.profiles)[0]);
-								saveProfilesToStorage();
-								saveCurrentConfig();
-								updateUIFromConfig();
-								alert('Profiles successfully imported.');
-							}
-						} else { alert('Error: Invalid profiles file.'); }
-					} catch (error) { alert('Error: Could not parse the file.'); }
-				};
-				reader.readAsText(file);
-			});
-			fileInput.click();
-		});
-
-		resetButton.addEventListener('click', () => {
-			if (confirm('Are you sure you want to reset the current settings to default?')) {
-				Object.assign(DungeoExt3_Config, DEFAULT_CONFIG);
-				saveCurrentConfig();
-				updateUIFromConfig();
-				alert('Settings have been reset to default.');
-			}
-		});
-
-		// "Save to..." Modal Logic
-		function showSaveProfileModal() {
-			const backdrop = document.createElement('div');
-			backdrop.className = 'save-profile-modal-backdrop';
-			const modal = document.createElement('div');
-			modal.className = 'save-profile-modal-content';
-			modal.innerHTML = '<h3>Save Current Config to Profile:</h3>';
-
-			// ==========================================================
-			// --- CORREZIONE QUI ---
-			// Aggiungiamo un listener al pannello del modal per fermare
-			// la propagazione del click allo sfondo (backdrop).
-			modal.addEventListener('click', (event) => {
-				event.stopPropagation();
-			});
-			// ==========================================================
-
-			for (let i = 1; i <= 8; i++) {
-				const btn = document.createElement('div');
-				btn.className = 'save-profile-modal-btn';
-				btn.textContent = `Profile ${i}`;
-				btn.onclick = () => {
-					const profileKey = `profile${i}`;
-					if (savedProfiles[profileKey] && !confirm(`Profile ${i} already exists. Overwrite it?`)) {
-						return; // User cancelled overwrite
-					}
-					savedProfiles[profileKey] = { ...DungeoExt3_Config }; // Save a copy of the current config
-					saveProfilesToStorage();
-					alert(`Configuration saved to Profile ${i}.`);
-					document.body.removeChild(backdrop);
-				};
-				modal.appendChild(btn);
-			}
-
-			// Questo listener ora si attiverà solo se si clicca sullo sfondo scuro.
-			backdrop.addEventListener('click', () => document.body.removeChild(backdrop));
-			backdrop.appendChild(modal);
-			document.body.appendChild(backdrop);
-		}
-		saveToButton.addEventListener('click', showSaveProfileModal);
-
-		configMenuAdded = true;
-	}
-
-	const menuInterval = setInterval(() => {
-		if (configMenuAdded) {
-			clearInterval(menuInterval);
-			return;
-		}
-		addConfigFieldsToMenu();
-	}, 1000);
 
 	// ==========================================================
 	// --- END: HWH Menu Integration ---
@@ -428,7 +227,7 @@
 		FEEDBACK: 'Feedback',
 		FEEDBACK_TITLE: 'Go to Telegram group for feedback on the HWHBestDungeonExt script',
 		FEEDBACK_URL: 'https://t.me/+RHdutKsQQcFlODMy',
-		WINNING_FIGHT_NOT_FOUND: 'No winning fight found\n',
+		WINNING_FIGHT_NOT_FOUND: 'No winning fight found\\n',
 		BEST_COMBINATION: 'Best combination:',
 		STOP_DUNGEON: 'Stop Dungeon', // in EN
 	};
@@ -439,7 +238,7 @@
 		FEEDBACK: 'Обратная связь',
 		FEEDBACK_TITLE: 'Перейти в Telegram группу для обратной связи по скрипту HWHBestDungeonExt',
 		FEEDBACK_URL: 'https://t.me/+1RpKpBDs9OAyZDdi',
-		WINNING_FIGHT_NOT_FOUND: 'Не найден победный бой\n',
+		WINNING_FIGHT_NOT_FOUND: 'Не найден победный бой\\n',
 		BEST_COMBINATION: 'Лучшее сочетание:',
 		STOP_DUNGEON: 'Stop Dungeon RU', // in RU (o traduci)
 	};
@@ -456,6 +255,292 @@
 			window.open(I18N('FEEDBACK_URL'), '_blank');
 		},
 	};
+
+
+	if (buttons?.testDungeon && buttons.testDungeon?.combineList) {
+		buttons.testDungeon.combineList.splice(1, 0, {
+			name: '⚙️',
+			get title() { return 'Dungeon run Settings (Evo1)'; },
+			color: 'violet',
+			onClick: async () => {
+				const cfg = DungeoExt3_Config;
+				const { popup, setProgress, hideProgress } = window.HWHFuncs || HWHFuncs;
+
+				const styleId = 'hwh-custom-css';
+				if (!document.getElementById(styleId)) {
+					const style = document.createElement('style');
+					style.id = styleId;
+					style.innerHTML = `
+					.hwh-inp-num::-webkit-outer-spin-button, .hwh-inp-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+					.hwh-inp-num { -moz-appearance: textfield; }
+					.hwh-btn-adj { width: 28px; height: 28px; background: #444; color: #fff; border: 1px solid #666; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; display: flex; align-items: center; justify-content: center; user-select:none; }
+					.hwh-btn-adj:hover { background: #666; }
+					.hwh-prof-btn { flex:1; cursor:pointer; font-size:11px; color:#ddd; border:1px solid #555; padding:4px 0; border-radius:3px; font-weight:bold; transition: background 0.2s; }
+					.hwh-prof-btn:hover { color:#fff; }
+					.hwh-btn-save { background: #333; } .hwh-btn-save:hover { background: #555; }
+					.hwh-btn-load { background: #244; } .hwh-btn-load:hover { background: #366; }
+					.hwh-native-green-btn { background: radial-gradient(circle, #47a41b 0%, #1a2f04 150%); border: 1px solid #1a2f04; box-shadow: inset 0px 2px 4px #83ce26, inset 0px -4px 6px #1a2f04, 0px 0px 2px black, 0px 0px 0px 1px #ce9767; color: #fce5b7; text-shadow: 0px 1px 2px black; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px; text-transform: uppercase; }
+					.hwh-native-green-btn:hover { filter: brightness(1.2); }
+				`;
+					document.head.appendChild(style);
+				}
+
+				let profilesHTML = '<div style="background:rgba(0,0,0,0.3); padding:8px; border-radius:5px; margin-bottom:10px; border:1px solid #444;">';
+				profilesHTML += '<div style="text-align:center; margin-bottom:5px; color:#00ffaa; font-size:14px; font-weight:bold;">Profiles (Evo1)</div>';
+				profilesHTML += '<div style="display:flex; flex-direction:column; gap:4px;">';
+				for (let i = 1; i <= 8; i++) {
+					profilesHTML += `
+					<div style="display:flex; align-items:center; gap:4px; padding:2px;">
+						<span style="font-size:12px; color:#eba; width:20px; font-weight:bold;">P${i}</span>
+						<button id="btn_save_p${i}" class="hwh-prof-btn hwh-btn-save" title="Save to P${i}">Save</button>
+						<button id="btn_load_p${i}" class="hwh-prof-btn hwh-btn-load" title="Load from P${i}">Load</button>
+					</div>`;
+				}
+				profilesHTML += '<div style="margin-top:8px;"><button id="btn_web_import" class="hwh-native-green-btn" style="width:100%; font-size:12px; padding:4px;">🌐 Web</button></div>';
+				profilesHTML += '</div></div>';
+
+				const renderRow = (id, label, val, step, color = '#ccc') => `
+				<div style="display:flex; justify-content:space-between; align-items:center;">
+					<label style="color:${color}; font-size:15px;">${label}</label>
+					<div style="display:flex; align-items:center; gap:3px;">
+						<div class="hwh-btn-adj" onclick="document.getElementById('${id}').stepDown(); document.getElementById('${id}').dispatchEvent(new Event('input'));">-</div>
+						<input id="${id}" class="hwh-inp-num" type="number" step="${step}" value="${val}" style="width:65px; height:28px; font-size:15px; background:#222; color:#fff; border:1px solid #555; text-align:center; border-radius:2px;">
+						<div class="hwh-btn-adj" onclick="document.getElementById('${id}').stepUp(); document.getElementById('${id}').dispatchEvent(new Event('input'));">+</div>
+					</div>
+				</div>`;
+
+				let paramsCol1HTML = '<div style="display:flex; flex-direction:column; gap:6px; max-height: 500px; overflow-y: auto; padding-right: 5px;">';
+				paramsCol1HTML += '<div style="color:#e6c300; font-size:16px; font-weight:bold; border-bottom:1px solid #555; margin-bottom:5px;">Fix it Dungeon</div>';
+				paramsCol1HTML += renderRow('inp_timeout', 'Timeout (s)', cfg.timeoutFix / 1000, 1);
+				paramsCol1HTML += renderRow('inp_countFix', 'Count Fix', cfg.countFix, 10);
+				paramsCol1HTML += renderRow('inp_fixedTimer', 'Timer Fisso', cfg.fixedTimerValue, 0.2);
+				paramsCol1HTML += renderRow('inp_maxTimer', 'Timer Max (Battle)', cfg.maxTimerValue, 10);
+
+				paramsCol1HTML += '<div style="color:#e6c300; font-size:16px; font-weight:bold; border-bottom:1px solid #555; margin:10px 0 5px 0;">Battle Sim</div>';
+				paramsCol1HTML += renderRow('inp_simCountTest', 'Test Battles', cfg.sim_countTestBattle, 1);
+				paramsCol1HTML += renderRow('inp_simCountAuto', 'Auto Retries', cfg.sim_countAutoBattle, 1);
+				paramsCol1HTML += '</div>';
+
+				let paramsCol2HTML = '<div style="display:flex; flex-direction:column; gap:6px; max-height: 500px; overflow-y: auto; padding-right: 5px;">';
+				paramsCol2HTML += '<div style="color:#e6c300; font-size:16px; font-weight:bold; border-bottom:1px solid #555; margin-bottom:5px;">Genetic Algo</div>';
+				paramsCol2HTML += renderRow('inp_popSize', 'Population Size', cfg.ga_populationSize, 1);
+				paramsCol2HTML += renderRow('inp_gen', 'Generations', cfg.ga_generations, 1);
+				paramsCol2HTML += renderRow('inp_mut', 'Mutation Rate', cfg.ga_mutationRate, 0.01);
+				paramsCol2HTML += renderRow('inp_elite', 'Elite Count', cfg.ga_eliteCount, 1);
+
+				paramsCol2HTML += '<div style="color:#e6c300; font-size:16px; font-weight:bold; border-bottom:1px solid #555; margin:10px 0 5px 0;">Health : Energy</div>';
+				paramsCol2HTML += renderRow('inp_hpWeight', 'HP Weight', cfg.decision_hpWeight, 5);
+				paramsCol2HTML += renderRow('inp_energyWeight', 'Energy Weight', cfg.decision_energyWeight, 0.5);
+				paramsCol2HTML += '</div>';
+
+				const fullContentHTML = `
+				<div style="position: relative; padding-bottom: 10px;">
+					<div id="hwh_save_toast" style="display:none; position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:rgba(71, 164, 27, 0.9); color:#fff; padding:8px 20px; border-radius:5px; font-weight:bold; z-index:9999; border: 1px solid #1a2f04;">
+						Configuration Saved!
+					</div>
+					<div style="display:flex; gap:15px; min-width:850px; font-family:Arial, sans-serif;">
+						<div style="flex:3;">${profilesHTML}</div>
+						<div style="flex:4; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;">
+							<h4 style="margin:0 0 10px 0; font-size:18px; color:#eee;">Evo1 Settings</h4>
+							${paramsCol1HTML}
+						</div>
+						<div style="flex:4; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;">
+							<h4 style="margin:0 0 10px 0; font-size:18px; color:#eee;">Advanced</h4>
+							${paramsCol2HTML}
+						</div>
+					</div>
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #444; flex-wrap: wrap;">
+						<div style="display:flex; gap:10px; align-items:center;">
+							<button id="btn_global_save" class="hwh-native-green-btn">💾 Save Configuration</button>
+							<button id="btn_set_default" class="hwh-native-green-btn" style="background: radial-gradient(circle, #a4811b 0%, #2f2504 150%);">Set Default</button>
+							<button id="btn_load_default" class="hwh-native-green-btn" style="background: radial-gradient(circle, #2b77a4 0%, #04242f 150%);">Load Default</button>
+							<label style="color:#ccc; display:flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;" title="Loads Set Default parameters internally 19 seconds after extension boots">
+								<input type="checkbox" id="chk_autoload_defaults" style="width:16px;height:16px;"> auto load defaults 19s
+							</label>
+						</div>
+						<div style="display:flex; gap:10px;">
+							<button id="btn_file_import" class="hwh-native-green-btn" style="background: radial-gradient(circle, #a4311b 0%, #2f0704 150%);">📥 Import</button>
+							<button id="btn_file_export" class="hwh-native-green-btn" style="background: radial-gradient(circle, #831ba4 0%, #22042f 150%);">📤 Export</button>
+							<input type="file" id="hwh_file_input" style="display:none;" accept=".json">
+						</div>
+					</div>
+				</div>`;
+
+				window.Evo1SaveLogic = () => {
+					const getVal = id => parseFloat(document.getElementById(id)?.value || 0);
+					DungeoExt3_Config.timeoutFix = getVal('inp_timeout') * 1000;
+					DungeoExt3_Config.countFix = getVal('inp_countFix');
+					DungeoExt3_Config.fixedTimerValue = getVal('inp_fixedTimer');
+					DungeoExt3_Config.maxTimerValue = getVal('inp_maxTimer');
+					DungeoExt3_Config.sim_countTestBattle = getVal('inp_simCountTest');
+					DungeoExt3_Config.sim_countAutoBattle = getVal('inp_simCountAuto');
+					DungeoExt3_Config.ga_populationSize = getVal('inp_popSize');
+					DungeoExt3_Config.ga_generations = getVal('inp_gen');
+					DungeoExt3_Config.ga_mutationRate = getVal('inp_mut');
+					DungeoExt3_Config.ga_eliteCount = getVal('inp_elite');
+					DungeoExt3_Config.decision_hpWeight = getVal('inp_hpWeight');
+					DungeoExt3_Config.decision_energyWeight = getVal('inp_energyWeight');
+					saveCurrentConfig();
+					saveConfig();
+				};
+
+				window.Evo1LoadDOM = (pcfg) => {
+					const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+					setVal('inp_timeout', pcfg.timeoutFix / 1000);
+					setVal('inp_countFix', pcfg.countFix);
+					setVal('inp_fixedTimer', pcfg.fixedTimerValue);
+					setVal('inp_maxTimer', pcfg.maxTimerValue);
+					setVal('inp_simCountTest', pcfg.sim_countTestBattle);
+					setVal('inp_simCountAuto', pcfg.sim_countAutoBattle);
+					setVal('inp_popSize', pcfg.ga_populationSize);
+					setVal('inp_gen', pcfg.ga_generations);
+					setVal('inp_mut', pcfg.ga_mutationRate);
+					setVal('inp_elite', pcfg.ga_eliteCount);
+					setVal('inp_hpWeight', pcfg.decision_hpWeight);
+					setVal('inp_energyWeight', pcfg.decision_energyWeight);
+				};
+
+				const showToast = (msg, color = 'rgba(71, 164, 27, 0.9)') => {
+					const toast = document.getElementById('hwh_save_toast');
+					toast.innerText = msg;
+					toast.style.background = color;
+					toast.style.display = 'block'; setTimeout(() => toast.style.display = 'none', 1500);
+				};
+
+				const attachListeners = setInterval(() => {
+					const btnSave = document.getElementById('btn_global_save');
+					if (btnSave) {
+						clearInterval(attachListeners);
+						btnSave.addEventListener('click', () => {
+							window.Evo1SaveLogic();
+							showToast('Configuration Saved!');
+						});
+
+						const chkAuto = document.getElementById('chk_autoload_defaults');
+						if (chkAuto) {
+							chkAuto.checked = typeof GM_getValue !== 'undefined' ? GM_getValue('DungeoExt3_AutoLoadDefaults', false) === true : false;
+							chkAuto.addEventListener('change', (e) => {
+								if (typeof GM_setValue !== 'undefined') {
+									GM_setValue('DungeoExt3_AutoLoadDefaults', e.target.checked);
+								}
+								showToast(e.target.checked ? 'Auto Load Enabled' : 'Auto Load Disabled', 'rgba(164, 129, 27, 0.9)');
+							});
+						}
+						for (let i = 1; i <= 8; i++) {
+							document.getElementById(`btn_save_p${i}`).addEventListener('click', () => {
+								window.Evo1SaveLogic();
+								savedProfiles[`profile${i}`] = { ...DungeoExt3_Config };
+								saveProfilesToStorage();
+								setProgress(`Saved to P${i}`, false); setTimeout(hideProgress, 1000);
+							});
+							document.getElementById(`btn_load_p${i}`).addEventListener('click', () => {
+								if (savedProfiles[`profile${i}`]) {
+									window.Evo1LoadDOM(savedProfiles[`profile${i}`]);
+									window.Evo1SaveLogic();
+									setProgress(`Loaded P${i}`, false); setTimeout(hideProgress, 1000);
+								} else {
+									setProgress(`P${i} empty`, false); setTimeout(hideProgress, 1000);
+								}
+							});
+						}
+
+						// Set Default
+						document.getElementById('btn_set_default').addEventListener('click', () => {
+							window.Evo1SaveLogic();
+							GM_setValue('DungeoExt3_UserDefaults_v1', JSON.stringify({ config: DungeoExt3_Config, profiles: savedProfiles }));
+							showToast('Default Settings Saved!', 'rgba(164, 129, 27, 0.9)');
+						});
+
+						// Load Default
+						document.getElementById('btn_load_default').addEventListener('click', () => {
+							const stored = GM_getValue('DungeoExt3_UserDefaults_v1');
+							if (stored) {
+								try {
+									const data = JSON.parse(stored);
+									if (data.config) window.Evo1LoadDOM(data.config);
+									if (data.profiles) {
+										savedProfiles = data.profiles;
+										saveProfilesToStorage();
+									}
+									window.Evo1SaveLogic();
+									showToast('Defaults Loaded!', 'rgba(43, 119, 164, 0.9)');
+								} catch (e) { }
+							} else {
+								// Load hardcoded fallback defaults
+								window.Evo1LoadDOM(DEFAULT_CONFIG);
+								window.Evo1SaveLogic();
+								showToast('Hardcoded Defaults Loaded!', 'rgba(43, 119, 164, 0.9)');
+							}
+						});
+
+						// Web Import
+						document.getElementById('btn_web_import').addEventListener('click', async () => {
+							setProgress('Fetching from Web...', false);
+							try {
+								const resp = await fetch('https://github.com/HeroWarsTools/dungeon/raw/refs/heads/main/W1Ext3.json');
+								const data = await resp.json();
+								if (data.profiles) {
+									savedProfiles = data.profiles;
+									saveProfilesToStorage();
+								}
+								if (data.config) {
+									window.Evo1LoadDOM(data.config);
+									window.Evo1SaveLogic();
+								}
+								showToast('Web Profiles Loaded!', 'rgba(27, 164, 129, 0.9)');
+								hideProgress();
+							} catch (e) {
+								console.error(e);
+								showToast('Fetch Failed!', 'rgba(164, 27, 27, 0.9)');
+								hideProgress();
+							}
+						});
+
+						// Local File Export
+						document.getElementById('btn_file_export').addEventListener('click', () => {
+							window.Evo1SaveLogic();
+							const exportData = { config: DungeoExt3_Config, profiles: savedProfiles };
+							const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+							const downloadAnchorNode = document.createElement('a');
+							downloadAnchorNode.setAttribute("href", dataStr);
+							downloadAnchorNode.setAttribute("download", "profiles1-8.json");
+							document.body.appendChild(downloadAnchorNode);
+							downloadAnchorNode.click();
+							downloadAnchorNode.remove();
+						});
+
+						// Local File Import
+						const fileInput = document.getElementById('hwh_file_input');
+						document.getElementById('btn_file_import').addEventListener('click', () => {
+							fileInput.click();
+						});
+						fileInput.addEventListener('change', (e) => {
+							const file = e.target.files[0];
+							if (!file) return;
+							const reader = new FileReader();
+							reader.onload = (ev) => {
+								try {
+									const data = JSON.parse(ev.target.result);
+									if (data.config) window.Evo1LoadDOM(data.config);
+									if (data.profiles) {
+										savedProfiles = data.profiles;
+										saveProfilesToStorage();
+									}
+									window.Evo1SaveLogic();
+									showToast('Imported from File!', 'rgba(164, 49, 27, 0.9)');
+								} catch (err) {
+									showToast('Invalid JSON file!', 'rgba(164, 27, 27, 0.9)');
+								}
+							};
+							reader.readAsText(file);
+						});
+					}
+				}, 100);
+
+				await popup.confirm(fullContentHTML, [{ msg: 'Close', result: false, isCancel: true, color: 'brown' }], []);
+			}
+		});
+	}
 
 	buttons['HWHStopDungeon'] = {
 		get name() { return I18N('STOP_DUNGEON'); },
@@ -2666,3 +2751,5 @@
 
 	this.HWHClasses.ScriptMenu = NewScriptMenu;
 })();
+
+
