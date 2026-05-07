@@ -27,9 +27,9 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "Dungeon Panel Plus",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Titan%20Monitor-7.1.1.user.js",
-    "descrizione": "Panel and complementary utility for the dungeon script",
+    "titolo": "Dungeon Updated",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/UP-Best-dungeon.user.js",
+    "descrizione": "smart dungeon script updated with new game update",
     "coloreCasella": "#8000ff",
     "coloreTestoCasella": "#ffff80",
     "coloreBottone": "#0000ff",
@@ -54,9 +54,9 @@
     "coloreTestoBottone": "#8000ff"
   },
   {
-    "titolo": "New Character Ext",
-    "link": "https://github.com/Green-oGo/HWHNewCharacterExt/raw/refs/heads/main/HWHNewCharacterExt.user.js",
-    "descrizione": "Complete missions for the new character with just a few clicks",
+    "titolo": "Dungeon Panel 8.02",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20titanMonitor.user.js",
+    "descrizione": "dungeon panel for version 1.7 and above",
     "coloreCasella": "#bbffff",
     "coloreTestoCasella": "#000000",
     "coloreBottone": "#86ffed",
@@ -156,6 +156,15 @@
     "titolo": "ᛉ Glyphs and runes ᛉ",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Glyph_Runes.user.js",
     "descrizione": "Enchant Glyphs with less clicks",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "New Character Ext",
+    "link": "https://github.com/Green-oGo/HWHNewCharacterExt/raw/refs/heads/main/HWHNewCharacterExt.user.js",
+    "descrizione": "Complete missions for the new character with just a few clicks",
     "coloreCasella": "#ffffff",
     "coloreTestoCasella": "#1f2937",
     "coloreBottone": "#2563eb",
