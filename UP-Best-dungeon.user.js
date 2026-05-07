@@ -3,7 +3,7 @@
 // @name:en			UpBestDungeonExt
 // @name:ru			UpBestDungeonExt
 // @namespace		UpBestDungeonExt
-// @version			1.7.4 (Integration Update)
+// @version			0.1.7.4 (Integration Update)
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
