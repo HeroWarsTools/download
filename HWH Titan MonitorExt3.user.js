@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Titan States & Dungeon GUI (Auto-Profile Edition)
 // @namespace    http://tampermonkey.net/
-// @version      4.0
+// @version      4.0.2
 // @description  Pannello di monitoraggio avanzato con sistema di auto-profiling e calcolatrice di rischio integrata.
 // @author       Gemini & You
 // @match        https://www.hero-wars.com/*
@@ -12,7 +12,7 @@
 // @run-at       document-idle
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
 
     // ===============================================
@@ -62,6 +62,8 @@
             document.addEventListener('titanStatesUpdated', (e) => this.onDataUpdate(e.detail, 'titans'));
             document.addEventListener('dungeonProgressUpdated', (e) => this.onDataUpdate(e.detail, 'progress'));
             document.addEventListener('floorChanged', (e) => this.onDataUpdate(e.detail, 'floor'));
+            // -- FIX: Se l'utente forza un profilo, resettiamo lo stato interno per permettere nuovi scatti
+            document.addEventListener('manualProfileChanged', () => { this.currentProfile = 0; });
         },
         loadSettings() { const saved = GM_getValue('AutoProfile_Settings_v1', null); this.settings = saved ? { ...this.defaults, ...JSON.parse(saved) } : { ...this.defaults }; },
         saveSettings() { GM_setValue('AutoProfile_Settings_v1', JSON.stringify(this.settings)); },
@@ -236,9 +238,10 @@
         const dungeonSection = document.createElement('div'); dungeonSection.id = 'dungeon-section'; dungeonSection.className = 'panel-sub-section'; content.appendChild(dungeonSection);
         dungeonSection.innerHTML = `<div class="info-grid">
             <div class="info-label">Floor:</div><div id="dungeon-floor" class="info-value">Waiting for data...</div>
+            <div class="info-label">Healing Buffs:</div><div id="dungeon-healing-buffs" class="info-value">--</div>
             <div class="info-label">Opponent:</div><div id="dungeon-opponent" class="info-value">--</div>
             <div class="info-label">Titanite:</div><div id="dungeon-titanite" class="info-value">-- / --</div>
-            <div class="info-label">Last Reward:</div><div id="dungeon-reward" class="info-value">--</div>
+            <div class="info-label">Active Profile:</div><div id="dungeon-profile" class="info-value">--</div>
         </div>`;
         const calibratorOverlay = document.createElement('div'); calibratorOverlay.className = 'calibrator-overlay'; content.appendChild(calibratorOverlay);
         if (panelSettings.minimized) panel.classList.add('minimized'); else if (panelSettings.collapsed) panel.classList.add('collapsed');
@@ -296,7 +299,7 @@
                         const newWidth = startWidth + e.clientX - startX;
                         panel.style.width = `${Math.max(220, newWidth)}px`;
                     }
-                    
+
                     // NUOVA LOGICA per l'allargamento a sinistra
                     if (side.includes('left')) {
                         const deltaX = startX - e.clientX;
@@ -373,196 +376,196 @@
     }
 
     function populateCalibrationPanel(container) {
-    container.innerHTML = ''; // Pulisce il contenuto precedente
+        container.innerHTML = ''; // Pulisce il contenuto precedente
 
-    // --- Sezione Abilitazione Sistema ---
-    const enabledSection = document.createElement('div');
-    enabledSection.className = 'calibrator-section';
-    enabledSection.innerHTML = `<h4>Auto-Profile System</h4>`;
-    const enabledLabel = document.createElement('label');
-    enabledLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer;';
-    const enabledCheckbox = document.createElement('input');
-    enabledCheckbox.type = 'checkbox';
-    enabledCheckbox.checked = AutoProfiler.settings.enabled;
-    enabledCheckbox.onchange = () => {
-        AutoProfiler.settings.enabled = enabledCheckbox.checked;
-        AutoProfiler.saveSettings();
-    };
-    enabledLabel.append(enabledCheckbox, ' Enable Automatic Profile Switching');
-    enabledSection.appendChild(enabledLabel);
-    container.appendChild(enabledSection);
-
-    // --- Sezione Calcolatrice / Simulatore ---
-    const simulatorSection = document.createElement('div');
-    simulatorSection.className = 'calibrator-section';
-    simulatorSection.innerHTML = `<h4>Risk Score Calculator</h4>`;
-
-    const simulatorLabel = document.createElement('label');
-    simulatorLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer;';
-    const simulatorCheckbox = document.createElement('input');
-    simulatorCheckbox.type = 'checkbox';
-    simulatorCheckbox.checked = AutoProfiler.isSimulatorActive;
-    
-    const simulatorInputsContainer = document.createElement('div');
-    simulatorInputsContainer.style.display = AutoProfiler.isSimulatorActive ? 'block' : 'none';
-    simulatorInputsContainer.style.marginTop = '10px';
-    simulatorInputsContainer.innerHTML = '<div class="calibrator-grid"></div>';
-    const simulatorGrid = simulatorInputsContainer.querySelector('.calibrator-grid');
-
-    simulatorCheckbox.onchange = () => {
-        AutoProfiler.isSimulatorActive = simulatorCheckbox.checked;
-        simulatorInputsContainer.style.display = AutoProfiler.isSimulatorActive ? 'block' : 'none';
-        if (!AutoProfiler.isSimulatorActive) {
-            AutoProfiler.updateRiskIndicator();
-        } else {
-            updateSimulator(); // Update calculator when activated
-        }
-    };
-    simulatorLabel.append(simulatorCheckbox, ' Enable Calculator Mode');
-    simulatorSection.appendChild(simulatorLabel);
-    simulatorSection.appendChild(simulatorInputsContainer);
-    
-    const simInputs = { avgHealth: 100, minHealth: 100, deadTitans: 0, avgEnergy: 0, currentTitanite: 0 };
-    const inputElements = {};
-
-    Object.keys(simInputs).forEach(key => {
-        const label = document.createElement('label'); label.textContent = `${key}:`;
-        const input = document.createElement('input'); input.type = 'number'; input.value = simInputs[key];
-        inputElements[key] = input;
-        simulatorGrid.append(label, input);
-    });
-
-    const outputContainer = document.createElement('div');
-    outputContainer.id = 'simulator-output';
-    outputContainer.innerHTML = `Calculated Risk Score: <b id="sim-risk-score">--</b><br>Suggested Profile: <b id="sim-profile">--</b>`;
-    simulatorInputsContainer.appendChild(outputContainer);
-    
-    function updateSimulator() {
-        if (!AutoProfiler.isSimulatorActive) return;
-        const simulatedProgress = { currentTitanite: parseInt(inputElements.currentTitanite.value, 10) || 0 };
-        const simulatedTitansData = {
-            avgHealth: parseInt(inputElements.avgHealth.value, 10) || 100,
-            minHealth: parseInt(inputElements.minHealth.value, 10) || 100,
-            deadTitans: parseInt(inputElements.deadTitans.value, 10) || 0,
-            avgEnergy: parseInt(inputElements.avgEnergy.value, 10) || 0,
-            titans: { dummy: [{ hpPercent: 100, energy: 100, isDead: false }] }, // Dati fittizi
-            progress: simulatedProgress
-        };
-        const result = AutoProfiler.calculateRiskScore(simulatedTitansData);
-        const idealProfile = AutoProfiler.settings.profileThresholds.find(p => result.finalScore <= p.maxScore)?.profile || 8;
-        document.getElementById('sim-risk-score').textContent = result.finalScore;
-        document.getElementById('sim-profile').textContent = `Profile ${idealProfile}`;
-    }
-
-    Object.values(inputElements).forEach(input => input.addEventListener('input', updateSimulator));
-    container.appendChild(simulatorSection);
-    if (AutoProfiler.isSimulatorActive) updateSimulator();
-
-    // --- Sezione Pesi del Rischio ---
-    const weightsSection = document.createElement('div');
-    weightsSection.className = 'calibrator-section';
-    weightsSection.innerHTML = '<h4>Risk Weights</h4><div class="calibrator-grid"></div>';
-    const weightsGrid = weightsSection.querySelector('.calibrator-grid');
-    Object.keys(AutoProfiler.settings.weights).forEach(key => {
-        const label = document.createElement('label'); label.textContent = `${key}:`;
-        const input = document.createElement('input'); input.type = 'number'; input.step = 0.1;
-        input.value = AutoProfiler.settings.weights[key];
-        input.onchange = () => { AutoProfiler.settings.weights[key] = parseFloat(input.value) || 0; AutoProfiler.saveSettings(); };
-        weightsGrid.append(label, input);
-    });
-    container.appendChild(weightsSection);
-
-    // --- Sezione Scalini della Titanite ---
-    const titaniteTiersSection = document.createElement('div');
-    titaniteTiersSection.className = 'calibrator-section';
-    titaniteTiersSection.innerHTML = '<h4>Titanite Score Tiers</h4><div class="calibrator-grid"></div>';
-    const tiersGrid = titaniteTiersSection.querySelector('.calibrator-grid');
-    AutoProfiler.settings.titaniteTiers.forEach((tier, index) => {
-        const label = document.createElement('label'); label.textContent = `Up to Titanite:`;
-        const inputTitanite = document.createElement('input'); inputTitanite.type = 'number';
-        inputTitanite.value = tier.maxTitanite;
-        inputTitanite.onchange = () => { AutoProfiler.settings.titaniteTiers[index].maxTitanite = parseInt(inputTitanite.value, 10) || 99999; AutoProfiler.saveSettings(); };
-        const label2 = document.createElement('label'); label2.textContent = `Score:`;
-        const inputScore = document.createElement('input'); inputScore.type = 'number';
-        inputScore.value = tier.score;
-        inputScore.onchange = () => { AutoProfiler.settings.titaniteTiers[index].score = parseInt(inputScore.value, 10) || 0; AutoProfiler.saveSettings(); };
-        tiersGrid.append(label, inputTitanite, label2, inputScore);
-    });
-    container.appendChild(titaniteTiersSection);
-    
-    // --- Sezione Soglie dei Profili ---
-    const thresholdsSection = document.createElement('div');
-    thresholdsSection.className = 'calibrator-section';
-    thresholdsSection.innerHTML = '<h4>Profile Thresholds</h4><div class="calibrator-grid"></div>';
-    const thresholdsGrid = thresholdsSection.querySelector('.calibrator-grid');
-    AutoProfiler.settings.profileThresholds.forEach((threshold, index) => {
-        const label = document.createElement('label'); label.textContent = `Activate Profile ${threshold.profile} if Risk <=`;
-        const input = document.createElement('input'); input.type = 'number';
-        input.value = threshold.maxScore;
-        input.onchange = () => { AutoProfiler.settings.profileThresholds[index].maxScore = parseInt(input.value, 10) || 99999; AutoProfiler.saveSettings(); };
-        thresholdsGrid.append(label, input);
-    });
-    container.appendChild(thresholdsSection);
-
-    // --- Sezione Azioni di Gestione ---
-    const actionsSection = document.createElement('div');
-    actionsSection.className = 'calibrator-section';
-    actionsSection.innerHTML = '<h4>Actions</h4>';
-    actionsSection.style.display = 'flex';
-    actionsSection.style.gap = '10px';
-
-    const importBtn = document.createElement('button'); importBtn.textContent = 'Import Tuning'; importBtn.className = 'save-profile-modal-btn';
-    importBtn.onclick = () => {
-        const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.json,application/json';
-        fileInput.onchange = (event) => {
-            const file = event.target.files[0]; if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const importedSettings = JSON.parse(e.target.result);
-                    if (importedSettings && importedSettings.weights && importedSettings.profileThresholds) {
-                        if (confirm('Tuning file loaded. Apply settings?')) {
-                            Object.assign(AutoProfiler.settings, importedSettings);
-                            AutoProfiler.saveSettings();
-                            populateCalibrationPanel(container);
-                            alert('Tuning settings successfully imported.');
-                        }
-                    } else { alert('Error: Invalid tuning file.'); }
-                } catch (error) { alert('Error: Could not parse file.'); }
-            };
-            reader.readAsText(file);
-        };
-        fileInput.click();
-    };
-
-    const exportBtn = document.createElement('button'); exportBtn.textContent = 'Export Tuning'; exportBtn.className = 'save-profile-modal-btn';
-    exportBtn.onclick = () => {
-        const jsonString = JSON.stringify(AutoProfiler.settings, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'autoprofiler-tuning.json';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-    };
-
-    const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Tuning'; resetBtn.className = 'save-profile-modal-btn'; resetBtn.style.background = '#800';
-    resetBtn.onclick = () => {
-        if (confirm('Are you sure you want to reset all tuning parameters to their defaults?')) {
-            AutoProfiler.settings = JSON.parse(JSON.stringify(AutoProfiler.defaults));
+        // --- Sezione Abilitazione Sistema ---
+        const enabledSection = document.createElement('div');
+        enabledSection.className = 'calibrator-section';
+        enabledSection.innerHTML = `<h4>Auto-Profile System</h4>`;
+        const enabledLabel = document.createElement('label');
+        enabledLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer;';
+        const enabledCheckbox = document.createElement('input');
+        enabledCheckbox.type = 'checkbox';
+        enabledCheckbox.checked = AutoProfiler.settings.enabled;
+        enabledCheckbox.onchange = () => {
+            AutoProfiler.settings.enabled = enabledCheckbox.checked;
             AutoProfiler.saveSettings();
-            populateCalibrationPanel(container);
-            alert('Tuning settings have been reset to default.');
-        }
-    };
+        };
+        enabledLabel.append(enabledCheckbox, ' Enable Automatic Profile Switching');
+        enabledSection.appendChild(enabledLabel);
+        container.appendChild(enabledSection);
 
-    actionsSection.append(importBtn, exportBtn, resetBtn);
-    container.appendChild(actionsSection);
-}
+        // --- Sezione Calcolatrice / Simulatore ---
+        const simulatorSection = document.createElement('div');
+        simulatorSection.className = 'calibrator-section';
+        simulatorSection.innerHTML = `<h4>Risk Score Calculator</h4>`;
+
+        const simulatorLabel = document.createElement('label');
+        simulatorLabel.style.cssText = 'display: flex; align-items: center; cursor: pointer;';
+        const simulatorCheckbox = document.createElement('input');
+        simulatorCheckbox.type = 'checkbox';
+        simulatorCheckbox.checked = AutoProfiler.isSimulatorActive;
+
+        const simulatorInputsContainer = document.createElement('div');
+        simulatorInputsContainer.style.display = AutoProfiler.isSimulatorActive ? 'block' : 'none';
+        simulatorInputsContainer.style.marginTop = '10px';
+        simulatorInputsContainer.innerHTML = '<div class="calibrator-grid"></div>';
+        const simulatorGrid = simulatorInputsContainer.querySelector('.calibrator-grid');
+
+        simulatorCheckbox.onchange = () => {
+            AutoProfiler.isSimulatorActive = simulatorCheckbox.checked;
+            simulatorInputsContainer.style.display = AutoProfiler.isSimulatorActive ? 'block' : 'none';
+            if (!AutoProfiler.isSimulatorActive) {
+                AutoProfiler.updateRiskIndicator();
+            } else {
+                updateSimulator(); // Update calculator when activated
+            }
+        };
+        simulatorLabel.append(simulatorCheckbox, ' Enable Calculator Mode');
+        simulatorSection.appendChild(simulatorLabel);
+        simulatorSection.appendChild(simulatorInputsContainer);
+
+        const simInputs = { avgHealth: 100, minHealth: 100, deadTitans: 0, avgEnergy: 0, currentTitanite: 0 };
+        const inputElements = {};
+
+        Object.keys(simInputs).forEach(key => {
+            const label = document.createElement('label'); label.textContent = `${key}:`;
+            const input = document.createElement('input'); input.type = 'number'; input.value = simInputs[key];
+            inputElements[key] = input;
+            simulatorGrid.append(label, input);
+        });
+
+        const outputContainer = document.createElement('div');
+        outputContainer.id = 'simulator-output';
+        outputContainer.innerHTML = `Calculated Risk Score: <b id="sim-risk-score">--</b><br>Suggested Profile: <b id="sim-profile">--</b>`;
+        simulatorInputsContainer.appendChild(outputContainer);
+
+        function updateSimulator() {
+            if (!AutoProfiler.isSimulatorActive) return;
+            const simulatedProgress = { currentTitanite: parseInt(inputElements.currentTitanite.value, 10) || 0 };
+            const simulatedTitansData = {
+                avgHealth: parseInt(inputElements.avgHealth.value, 10) || 100,
+                minHealth: parseInt(inputElements.minHealth.value, 10) || 100,
+                deadTitans: parseInt(inputElements.deadTitans.value, 10) || 0,
+                avgEnergy: parseInt(inputElements.avgEnergy.value, 10) || 0,
+                titans: { dummy: [{ hpPercent: 100, energy: 100, isDead: false }] }, // Dati fittizi
+                progress: simulatedProgress
+            };
+            const result = AutoProfiler.calculateRiskScore(simulatedTitansData);
+            const idealProfile = AutoProfiler.settings.profileThresholds.find(p => result.finalScore <= p.maxScore)?.profile || 8;
+            document.getElementById('sim-risk-score').textContent = result.finalScore;
+            document.getElementById('sim-profile').textContent = `Profile ${idealProfile}`;
+        }
+
+        Object.values(inputElements).forEach(input => input.addEventListener('input', updateSimulator));
+        container.appendChild(simulatorSection);
+        if (AutoProfiler.isSimulatorActive) updateSimulator();
+
+        // --- Sezione Pesi del Rischio ---
+        const weightsSection = document.createElement('div');
+        weightsSection.className = 'calibrator-section';
+        weightsSection.innerHTML = '<h4>Risk Weights</h4><div class="calibrator-grid"></div>';
+        const weightsGrid = weightsSection.querySelector('.calibrator-grid');
+        Object.keys(AutoProfiler.settings.weights).forEach(key => {
+            const label = document.createElement('label'); label.textContent = `${key}:`;
+            const input = document.createElement('input'); input.type = 'number'; input.step = 0.1;
+            input.value = AutoProfiler.settings.weights[key];
+            input.onchange = () => { AutoProfiler.settings.weights[key] = parseFloat(input.value) || 0; AutoProfiler.saveSettings(); };
+            weightsGrid.append(label, input);
+        });
+        container.appendChild(weightsSection);
+
+        // --- Sezione Scalini della Titanite ---
+        const titaniteTiersSection = document.createElement('div');
+        titaniteTiersSection.className = 'calibrator-section';
+        titaniteTiersSection.innerHTML = '<h4>Titanite Score Tiers</h4><div class="calibrator-grid"></div>';
+        const tiersGrid = titaniteTiersSection.querySelector('.calibrator-grid');
+        AutoProfiler.settings.titaniteTiers.forEach((tier, index) => {
+            const label = document.createElement('label'); label.textContent = `Up to Titanite:`;
+            const inputTitanite = document.createElement('input'); inputTitanite.type = 'number';
+            inputTitanite.value = tier.maxTitanite;
+            inputTitanite.onchange = () => { AutoProfiler.settings.titaniteTiers[index].maxTitanite = parseInt(inputTitanite.value, 10) || 99999; AutoProfiler.saveSettings(); };
+            const label2 = document.createElement('label'); label2.textContent = `Score:`;
+            const inputScore = document.createElement('input'); inputScore.type = 'number';
+            inputScore.value = tier.score;
+            inputScore.onchange = () => { AutoProfiler.settings.titaniteTiers[index].score = parseInt(inputScore.value, 10) || 0; AutoProfiler.saveSettings(); };
+            tiersGrid.append(label, inputTitanite, label2, inputScore);
+        });
+        container.appendChild(titaniteTiersSection);
+
+        // --- Sezione Soglie dei Profili ---
+        const thresholdsSection = document.createElement('div');
+        thresholdsSection.className = 'calibrator-section';
+        thresholdsSection.innerHTML = '<h4>Profile Thresholds</h4><div class="calibrator-grid"></div>';
+        const thresholdsGrid = thresholdsSection.querySelector('.calibrator-grid');
+        AutoProfiler.settings.profileThresholds.forEach((threshold, index) => {
+            const label = document.createElement('label'); label.textContent = `Activate Profile ${threshold.profile} if Risk <=`;
+            const input = document.createElement('input'); input.type = 'number';
+            input.value = threshold.maxScore;
+            input.onchange = () => { AutoProfiler.settings.profileThresholds[index].maxScore = parseInt(input.value, 10) || 99999; AutoProfiler.saveSettings(); };
+            thresholdsGrid.append(label, input);
+        });
+        container.appendChild(thresholdsSection);
+
+        // --- Sezione Azioni di Gestione ---
+        const actionsSection = document.createElement('div');
+        actionsSection.className = 'calibrator-section';
+        actionsSection.innerHTML = '<h4>Actions</h4>';
+        actionsSection.style.display = 'flex';
+        actionsSection.style.gap = '10px';
+
+        const importBtn = document.createElement('button'); importBtn.textContent = 'Import Tuning'; importBtn.className = 'save-profile-modal-btn';
+        importBtn.onclick = () => {
+            const fileInput = document.createElement('input'); fileInput.type = 'file'; fileInput.accept = '.json,application/json';
+            fileInput.onchange = (event) => {
+                const file = event.target.files[0]; if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const importedSettings = JSON.parse(e.target.result);
+                        if (importedSettings && importedSettings.weights && importedSettings.profileThresholds) {
+                            if (confirm('Tuning file loaded. Apply settings?')) {
+                                Object.assign(AutoProfiler.settings, importedSettings);
+                                AutoProfiler.saveSettings();
+                                populateCalibrationPanel(container);
+                                alert('Tuning settings successfully imported.');
+                            }
+                        } else { alert('Error: Invalid tuning file.'); }
+                    } catch (error) { alert('Error: Could not parse file.'); }
+                };
+                reader.readAsText(file);
+            };
+            fileInput.click();
+        };
+
+        const exportBtn = document.createElement('button'); exportBtn.textContent = 'Export Tuning'; exportBtn.className = 'save-profile-modal-btn';
+        exportBtn.onclick = () => {
+            const jsonString = JSON.stringify(AutoProfiler.settings, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'autoprofiler-tuning.json';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        };
+
+        const resetBtn = document.createElement('button'); resetBtn.textContent = 'Reset Tuning'; resetBtn.className = 'save-profile-modal-btn'; resetBtn.style.background = '#800';
+        resetBtn.onclick = () => {
+            if (confirm('Are you sure you want to reset all tuning parameters to their defaults?')) {
+                AutoProfiler.settings = JSON.parse(JSON.stringify(AutoProfiler.defaults));
+                AutoProfiler.saveSettings();
+                populateCalibrationPanel(container);
+                alert('Tuning settings have been reset to default.');
+            }
+        };
+
+        actionsSection.append(importBtn, exportBtn, resetBtn);
+        container.appendChild(actionsSection);
+    }
 
     function updateTitanGUI(titansData) {
         const titanSection = document.getElementById('titan-section');
         if (!titanSection) return;
         titanSection.innerHTML = '';
-        const elements = [ { name: 'water', emoji: '🌊', className: 'titan-name-water' }, { name: 'fire', emoji: '🔥', className: 'titan-name-fire' }, { name: 'earth', emoji: '🌍', className: 'titan-name-earth' }, { name: 'light', emoji: '☀️', className: '' }, { name: 'dark', emoji: '🌑', className: '' }, ];
+        const elements = [{ name: 'water', emoji: '🌊', className: 'titan-name-water' }, { name: 'fire', emoji: '🔥', className: 'titan-name-fire' }, { name: 'earth', emoji: '🌍', className: 'titan-name-earth' }, { name: 'light', emoji: '☀️', className: '' }, { name: 'dark', emoji: '🌑', className: '' },];
         elements.forEach(element => {
             if (titansData && titansData[element.name] && titansData[element.name].length > 0) {
                 const header = document.createElement('div'); header.className = 'titan-element-header';
@@ -586,9 +589,14 @@
     function updateDungeonGUI(dungeonData) {
         if (!document.getElementById('titanStatsPanel')) createGUI();
         if (dungeonData.floorNumber !== undefined) document.getElementById('dungeon-floor').textContent = `${dungeonData.floorNumber} (${dungeonData.floorType || 'info'})`;
+        if (dungeonData.healingBuffs !== undefined) {
+             const buffEl = document.getElementById('dungeon-healing-buffs');
+             if (buffEl) buffEl.textContent = `${dungeonData.healingBuffs}%`;
+        }
         if (dungeonData.primeElement !== undefined) { const opEl = document.getElementById('dungeon-opponent'); opEl.textContent = `${dungeonData.primeElement.toUpperCase()}`; opEl.className = `info-value ${dungeonData.primeElement}`; }
         if (dungeonData.currentTitanite !== undefined) document.getElementById('dungeon-titanite').textContent = `${dungeonData.currentTitanite} / ${dungeonData.maxTitanite}`;
-        if (dungeonData.lastReward) { const rewardText = Object.entries(dungeonData.lastReward).map(([key, value]) => `${key.replace('dungeonActivity', 'titanite')}: ${value}`).join(', '); document.getElementById('dungeon-reward').textContent = rewardText; }
+        const profileEl = document.getElementById('dungeon-profile');
+        if (profileEl) profileEl.textContent = AutoProfiler.currentProfile === 0 ? "Manuale" : `Profile ${AutoProfiler.currentProfile}`;
     }
 
     // ===============================================
