@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Titan States & Dungeon GUI (Auto-Profile Edition)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.1buff
+// @version      4.0.2
 // @description  Pannello di monitoraggio avanzato con sistema di auto-profiling e calcolatrice di rischio integrata.
 // @author       Gemini & You
 // @match        https://www.hero-wars.com/*
@@ -57,6 +57,8 @@
             document.addEventListener('titanStatesUpdated', (e) => this.onDataUpdate(e.detail, 'titans'));
             document.addEventListener('dungeonProgressUpdated', (e) => this.onDataUpdate(e.detail, 'progress'));
             document.addEventListener('floorChanged', (e) => this.onDataUpdate(e.detail, 'floor'));
+            // -- FIX: Se l'utente forza un profilo, resettiamo lo stato interno per permettere nuovi scatti
+            document.addEventListener('manualProfileChanged', () => { this.currentProfile = 0; });
         },
         loadSettings() { const saved = GM_getValue('AutoProfile_Settings_v1', null); this.settings = saved ? { ...this.defaults, ...JSON.parse(saved) } : { ...this.defaults }; },
         saveSettings() { GM_setValue('AutoProfile_Settings_v1', JSON.stringify(this.settings)); },
@@ -239,7 +241,7 @@
             <div class="info-label">Healing Buffs:</div><div id="dungeon-healing-buffs" class="info-value">--</div>
             <div class="info-label">Opponent:</div><div id="dungeon-opponent" class="info-value">--</div>
             <div class="info-label">Titanite:</div><div id="dungeon-titanite" class="info-value">-- / --</div>
-            <div class="info-label">Last Reward:</div><div id="dungeon-reward" class="info-value">--</div>
+            <div class="info-label">Active Profile:</div><div id="dungeon-profile" class="info-value">--</div>
         </div>`;
         const calibratorOverlay = document.createElement('div'); calibratorOverlay.className = 'calibrator-overlay'; content.appendChild(calibratorOverlay);
         if (panelSettings.minimized) panel.classList.add('minimized'); else if (panelSettings.collapsed) panel.classList.add('collapsed');
@@ -574,11 +576,13 @@
         if (dungeonData.floorNumber !== undefined) document.getElementById('dungeon-floor').textContent = `${dungeonData.floorNumber} (${dungeonData.floorType || 'info'})`;
         if (dungeonData.healingBuffs !== undefined) {
              const buffEl = document.getElementById('dungeon-healing-buffs');
-             if (buffEl) buffEl.textContent = `${dungeonData.healingBuffs}%`;
+             const weight = AutoProfiler.settings.weights.healingBuff || 1.0;
+             if (buffEl) buffEl.innerHTML = `-${Math.abs(dungeonData.healingBuffs)}% <span style="color:#aaa; font-size:0.8em;">(Risk x${weight})</span>`;
         }
         if (dungeonData.primeElement !== undefined) { const opEl = document.getElementById('dungeon-opponent'); opEl.textContent = `${dungeonData.primeElement.toUpperCase()}`; opEl.className = `info-value ${dungeonData.primeElement}`; }
         if (dungeonData.currentTitanite !== undefined) document.getElementById('dungeon-titanite').textContent = `${dungeonData.currentTitanite} / ${dungeonData.maxTitanite}`;
-        if (dungeonData.lastReward) { const rewardText = Object.entries(dungeonData.lastReward).map(([key, value]) => `${key.replace('dungeonActivity', 'titanite')}: ${value}`).join(', '); document.getElementById('dungeon-reward').textContent = rewardText; }
+        const profileEl = document.getElementById('dungeon-profile');
+        if (profileEl) profileEl.textContent = AutoProfiler.currentProfile === 0 ? "Manuale" : `Profile ${AutoProfiler.currentProfile}`;
     }
 
     // ===============================================
