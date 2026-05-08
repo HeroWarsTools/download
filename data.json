@@ -192,8 +192,8 @@
     "titolo": "Dungeon Panel Ext3 Healing Buffs",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20TitanMonitor%20Ext3.1.user.js",
     "descrizione": "for lastest versions",
-    "coloreCasella": "#ffffff",
-    "coloreTestoCasella": "#1f2937",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff00",
     "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
   }
