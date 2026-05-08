@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Titan States & Dungeon GUI (Auto-Profile Edition)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.2
+// @version      4.0.4
 // @description  Pannello di monitoraggio avanzato con sistema di auto-profiling e calcolatrice di rischio integrata.
 // @author       Gemini & You
 // @match        https://www.hero-wars.com/*
@@ -54,7 +54,7 @@
         },
         settings: {},
         lastTitanData: null, lastProgressData: null, lastFloorData: null,
-        currentRiskScore: 0, currentProfile: 0, scoreBreakdown: {},
+        currentRiskScore: null, currentProfile: 0, scoreBreakdown: {},
         isSimulatorActive: false,
 
         init() {
@@ -64,32 +64,61 @@
             document.addEventListener('floorChanged', (e) => this.onDataUpdate(e.detail, 'floor'));
             // -- FIX: Se l'utente forza un profilo, resettiamo lo stato interno per permettere nuovi scatti
             document.addEventListener('manualProfileChanged', () => { this.currentProfile = 0; });
+            // Inizializza il profilo di fallback se attivato
+            if (this.settings.enabled) {
+                this.evaluateProfileChange();
+                // Assicurati che lo script principale riceva il comando anche se si avvia tardi
+                setInterval(() => {
+                    if (this.settings.enabled && this.currentRiskScore === null) {
+                        this.currentProfile = 5;
+                        document.dispatchEvent(new CustomEvent('changeDungeonProfile', { detail: { profileNumber: 5 } }));
+                        const profileEl = document.getElementById('dungeon-profile');
+                        if (profileEl) profileEl.textContent = 'Profile 5';
+                    }
+                }, 12400);
+            }
         },
-        loadSettings() { const saved = GM_getValue('AutoProfile_Settings_v1', null); this.settings = saved ? { ...this.defaults, ...JSON.parse(saved) } : { ...this.defaults }; },
+        loadSettings() {
+            const saved = GM_getValue('AutoProfile_Settings_v1', null);
+            this.settings = JSON.parse(JSON.stringify(this.defaults));
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    for (const key in parsed) {
+                        if (key === 'weights' && typeof parsed[key] === 'object') {
+                            this.settings.weights = { ...this.defaults.weights, ...parsed.weights };
+                        } else {
+                            this.settings[key] = parsed[key];
+                        }
+                    }
+                } catch(e) { console.warn("Failed to parse settings", e); }
+            }
+        },
         saveSettings() { GM_setValue('AutoProfile_Settings_v1', JSON.stringify(this.settings)); },
         onDataUpdate(data, type) {
             if (this.isSimulatorActive) return;
             if (type === 'titans') this.lastTitanData = data;
             if (type === 'progress') this.lastProgressData = data;
             if (type === 'floor') this.lastFloorData = data;
-            if (this.lastTitanData && this.lastProgressData && this.lastFloorData) {
-                this.calculateRiskScore();
-                this.updateRiskIndicator();
-                if (this.settings.enabled) {
-                    this.evaluateProfileChange();
-                }
+            this.calculateRiskScore();
+            this.updateRiskIndicator();
+            if (this.settings.enabled) {
+                this.evaluateProfileChange();
             }
         },
         calculateRiskScore(simulatedData = null) {
             const sourceTitanData = simulatedData ? simulatedData.titans : this.lastTitanData;
             const sourceProgressData = simulatedData ? simulatedData.progress : this.lastProgressData;
-            if (!sourceTitanData || !sourceProgressData) return 0;
+            if (!sourceTitanData || !sourceProgressData) {
+                if (!simulatedData) { this.currentRiskScore = null; this.scoreBreakdown = {}; }
+                return { finalScore: 0, breakdown: {} };
+            }
 
             const titans = Object.values(sourceTitanData).flat();
             const relevantTitans = titans.filter(t => !(t.hpPercent === 0 && t.energy === 0 && !t.isDead));
             if (relevantTitans.length === 0) {
-                if (!simulatedData) { this.currentRiskScore = 0; this.scoreBreakdown = {}; }
-                return 0;
+                if (!simulatedData) { this.currentRiskScore = null; this.scoreBreakdown = {}; }
+                return { finalScore: 0, breakdown: {} };
             }
 
             let avgHealth, minHealth, deadCount, avgEnergy;
@@ -138,10 +167,10 @@
         updateRiskIndicator() {
             if (this.isSimulatorActive) return;
             const indicator = document.getElementById('risk-score-indicator');
-            if (indicator) indicator.textContent = `Risk: ${this.currentRiskScore}`;
+            if (indicator) indicator.textContent = (this.currentRiskScore !== null) ? `Risk: ${this.currentRiskScore}` : `Risk: --`;
         },
         evaluateProfileChange() {
-            const idealProfile = this.settings.profileThresholds.find(p => this.currentRiskScore <= p.maxScore)?.profile || 8;
+            const idealProfile = (this.currentRiskScore === null) ? 5 : (this.settings.profileThresholds.find(p => this.currentRiskScore <= p.maxScore)?.profile || 8);
             if (this.currentProfile !== idealProfile) {
                 this.currentProfile = idealProfile;
                 document.dispatchEvent(new CustomEvent('changeDungeonProfile', { detail: { profileNumber: this.currentProfile } }));
