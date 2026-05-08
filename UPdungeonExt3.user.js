@@ -1385,7 +1385,8 @@
 				detail: {
 					floorNumber: dungeonInfo.floorNumber,
 					floorType: floorType,
-					primeElement: this.primeElement // This is the dungeon buff
+					primeElement: this.primeElement, // This is the dungeon buff
+					healingBuffs: this.buffHealing || 0
 				}
 			});
 			document.dispatchEvent(floorEvent);
