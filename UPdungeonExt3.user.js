@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.5.3
+// @version			0.0.22.Evo1.5.4
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -165,29 +165,51 @@
 	// --- NUOVO: "Ponte di Ritorno" per l'Auto-Profiling ---
 	// Questo codice ascolta i comandi inviati dallo "Script Pannello".
 	document.addEventListener('changeDungeonProfile', function (event) {
-		const profileNumber = event.detail.profileNumber;
-		if (profileNumber) {
-			console.log(`%c[AutoProfiler] Received command to switch to Profile ${profileNumber}`, 'color: #f0a');
-			const profileKey = `profile${profileNumber}`;
-			if (savedProfiles[profileKey]) {
-				Object.assign(DungeoExt3_Config, savedProfiles[profileKey]);
-				saveCurrentConfig();
-				saveConfig();
-				// Se l'interfaccia UI nativa e attualmente aperta e le funzioni sono definite
-				if (typeof window.Evo1LoadDOM === 'function' && typeof window.Evo1SaveLogic === 'function') {
-					window.Evo1LoadDOM(savedProfiles[profileKey]);
-					window.Evo1SaveLogic();
-				}
-				const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
-				const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
-				setProg(`Profile ${profileNumber} loaded.`, false);
-				setTimeout(hideProg, 2800);
-			} else {
-				const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
-				const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
-				setProg(`Profile ${profileNumber} is empty.`, false);
-				setTimeout(hideProg, 4000);
+		let profileNumber = event.detail.profileNumber;
+
+		// Valida il numero profilo: deve essere tra 1 e 8, se no usa 5.
+		if (!profileNumber || isNaN(profileNumber) || profileNumber < 1 || profileNumber > 8) {
+			console.log(`%c[AutoProfiler] Invalid or missing profileNumber (${profileNumber}). Defaulting to Profile 5.`, 'color: #f0a');
+			profileNumber = 5;
+		}
+
+		console.log(`%c[AutoProfiler] Received command to switch to Profile ${profileNumber}`, 'color: #f0a');
+		let profileKey = `profile${profileNumber}`;
+
+		// Fallback to profile 5 if the requested one is empty
+		if (!savedProfiles[profileKey] && profileNumber !== 5) {
+			console.log(`%c[AutoProfiler] Profile ${profileNumber} is empty, falling back to Profile 5`, 'color: #f0a');
+			profileNumber = 5;
+			profileKey = 'profile5';
+		}
+
+		if (savedProfiles[profileKey]) {
+			Object.assign(DungeoExt3_Config, savedProfiles[profileKey]);
+			saveCurrentConfig();
+			saveConfig();
+			// Se l'interfaccia UI nativa e attualmente aperta e le funzioni sono definite
+			if (typeof window.Evo1LoadDOM === 'function' && typeof window.Evo1SaveLogic === 'function') {
+				window.Evo1LoadDOM(savedProfiles[profileKey]);
+				window.Evo1SaveLogic();
 			}
+			const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
+			const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
+			setProg(`Profile ${profileNumber} loaded.`, false);
+			setTimeout(hideProg, 2800);
+		} else {
+			// Se anche il profilo 5 è vuoto, carichiamo la config di default corretta per evitare gli 0
+			Object.assign(DungeoExt3_Config, DEFAULT_CONFIG);
+			saveCurrentConfig();
+			saveConfig();
+			if (typeof window.Evo1LoadDOM === 'function' && typeof window.Evo1SaveLogic === 'function') {
+				window.Evo1LoadDOM(DEFAULT_CONFIG);
+				window.Evo1SaveLogic();
+			}
+
+			const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
+			const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
+			setProg(`Profile ${profileNumber} is empty. Hardcoded Defaults loaded.`, false);
+			setTimeout(hideProg, 4000);
 		}
 	});
 	// ==========================================================
@@ -419,19 +441,20 @@
 				};
 
 				window.Evo1LoadDOM = (pcfg) => {
+					if (!pcfg) pcfg = {};
 					const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
-					setVal('inp_timeout', pcfg.timeoutFix / 1000);
-					setVal('inp_countFix', pcfg.countFix);
-					setVal('inp_fixedTimer', pcfg.fixedTimerValue);
-					setVal('inp_maxTimer', pcfg.maxTimerValue);
-					setVal('inp_simCountTest', pcfg.sim_countTestBattle);
-					setVal('inp_simCountAuto', pcfg.sim_countAutoBattle);
-					setVal('inp_popSize', pcfg.ga_populationSize);
-					setVal('inp_gen', pcfg.ga_generations);
-					setVal('inp_mut', pcfg.ga_mutationRate);
-					setVal('inp_elite', pcfg.ga_eliteCount);
-					setVal('inp_hpWeight', pcfg.decision_hpWeight);
-					setVal('inp_energyWeight', pcfg.decision_energyWeight);
+					setVal('inp_timeout', (pcfg.timeoutFix ?? DEFAULT_CONFIG.timeoutFix) / 1000);
+					setVal('inp_countFix', pcfg.countFix ?? DEFAULT_CONFIG.countFix);
+					setVal('inp_fixedTimer', pcfg.fixedTimerValue ?? DEFAULT_CONFIG.fixedTimerValue);
+					setVal('inp_maxTimer', pcfg.maxTimerValue ?? DEFAULT_CONFIG.maxTimerValue);
+					setVal('inp_simCountTest', pcfg.sim_countTestBattle ?? DEFAULT_CONFIG.sim_countTestBattle);
+					setVal('inp_simCountAuto', pcfg.sim_countAutoBattle ?? DEFAULT_CONFIG.sim_countAutoBattle);
+					setVal('inp_popSize', pcfg.ga_populationSize ?? DEFAULT_CONFIG.ga_populationSize);
+					setVal('inp_gen', pcfg.ga_generations ?? DEFAULT_CONFIG.ga_generations);
+					setVal('inp_mut', pcfg.ga_mutationRate ?? DEFAULT_CONFIG.ga_mutationRate);
+					setVal('inp_elite', pcfg.ga_eliteCount ?? DEFAULT_CONFIG.ga_eliteCount);
+					setVal('inp_hpWeight', pcfg.decision_hpWeight ?? DEFAULT_CONFIG.decision_hpWeight);
+					setVal('inp_energyWeight', pcfg.decision_energyWeight ?? DEFAULT_CONFIG.decision_energyWeight);
 				};
 
 				const showToast = (msg, color = 'rgba(71, 164, 27, 0.9)') => {
