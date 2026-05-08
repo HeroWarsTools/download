@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.2
+// @version			0.0.22.Evo1.5.1
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -160,6 +160,38 @@
 		}, 19000);
 	}
 	// --- END: Profile and Configuration Management ---
+
+	// ==========================================================
+	// --- NUOVO: "Ponte di Ritorno" per l'Auto-Profiling ---
+	// Questo codice ascolta i comandi inviati dallo "Script Pannello".
+	document.addEventListener('changeDungeonProfile', function (event) {
+		const profileNumber = event.detail.profileNumber;
+		if (profileNumber) {
+			console.log(`%c[AutoProfiler] Received command to switch to Profile ${profileNumber}`, 'color: #f0a');
+			const profileKey = `profile${profileNumber}`;
+			if (savedProfiles[profileKey]) {
+				Object.assign(DungeoExt3_Config, savedProfiles[profileKey]);
+				saveCurrentConfig();
+				saveConfig();
+				// Se l'interfaccia UI nativa e attualmente aperta e le funzioni sono definite
+				if (typeof window.Evo1LoadDOM === 'function' && typeof window.Evo1SaveLogic === 'function') {
+					window.Evo1LoadDOM(savedProfiles[profileKey]);
+					window.Evo1SaveLogic();
+				}
+				const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
+				const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
+				setProg(`Profile ${profileNumber} loaded.`, false);
+				setTimeout(hideProg, 2800);
+			} else {
+				const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
+				const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
+				setProg(`Profile ${profileNumber} is empty.`, false);
+				setTimeout(hideProg, 4000);
+			}
+		}
+	});
+	// ==========================================================
+
 
 
 
@@ -482,7 +514,7 @@
 								GM_xmlhttpRequest({
 									method: 'GET',
 									url: fetchUrl,
-									onload: function(response) {
+									onload: function (response) {
 										try {
 											if (response.status !== 200) throw new Error('HTTP Status ' + response.status);
 											const data = JSON.parse(response.responseText);
@@ -501,7 +533,7 @@
 										}
 										hideProgress();
 									},
-									onerror: function(error) {
+									onerror: function (error) {
 										console.error(error);
 										showToast('Fetch Failed!', 'rgba(164, 27, 27, 0.9)');
 										hideProgress();
