@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.5.1
+// @version			0.0.22.Evo1.5.2
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -470,6 +470,8 @@
 								if (savedProfiles[`profile${i}`]) {
 									window.Evo1LoadDOM(savedProfiles[`profile${i}`]);
 									window.Evo1SaveLogic();
+									// -- FIX: Avvisiamo il pannello che abbiamo forzato un profilo manuale
+									document.dispatchEvent(new CustomEvent('manualProfileChanged'));
 									setProgress(`Loaded P${i}`, false); setTimeout(hideProgress, 1000);
 								} else {
 									setProgress(`P${i} empty`, false); setTimeout(hideProgress, 1000);
