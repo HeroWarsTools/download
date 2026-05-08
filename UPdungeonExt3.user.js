@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.5.2
+// @version			0.0.22.Evo1.5.3
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -400,6 +400,7 @@
 				</div>`;
 
 				window.Evo1SaveLogic = () => {
+					if (!document.getElementById('inp_timeout')) return; // Fix: do not overwrite config if DOM is closed
 					const getVal = id => parseFloat(document.getElementById(id)?.value || 0);
 					DungeoExt3_Config.timeoutFix = getVal('inp_timeout') * 1000;
 					DungeoExt3_Config.countFix = getVal('inp_countFix');
