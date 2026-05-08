@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Titan States & Dungeon GUI (Auto-Profile Edition)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.1
+// @version      4.0.1buff
 // @description  Pannello di monitoraggio avanzato con sistema di auto-profiling e calcolatrice di rischio integrata.
 // @author       Gemini & You
 // @match        https://www.hero-wars.com/*
