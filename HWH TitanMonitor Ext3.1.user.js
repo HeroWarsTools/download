@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Titan States & Dungeon GUI (Auto-Profile Edition)
 // @namespace    http://tampermonkey.net/
-// @version      4.0.4 buffs
+// @version      4.0.5 buffs
 // @description  Pannello di monitoraggio avanzato con sistema di auto-profiling e calcolatrice di rischio integrata.
 // @author       Gemini & You
 // @match        https://www.hero-wars.com/*
@@ -59,8 +59,32 @@
             document.addEventListener('floorChanged', (e) => this.onDataUpdate(e.detail, 'floor'));
             // -- FIX: Se l'utente forza un profilo, resettiamo lo stato interno per permettere nuovi scatti
             document.addEventListener('manualProfileChanged', () => { this.currentProfile = 0; });
-            // Inizializza il profilo di fallback se attivato
-            if (this.settings.enabled) this.evaluateProfileChange();
+            // Fix: Invece di forzare il profilo 5 all'avvio, affidiamo il calcolo al Safe Start
+            if (this.settings.enabled) {
+                this.evaluateProfileChange();
+                setInterval(() => {
+                    if (this.settings.enabled) {
+                        // Verifica divergenza tra Pannello ed Evo1
+                        const idealProfile = (this.currentRiskScore === null) ? 8 : (this.settings.profileThresholds.find(p => this.currentRiskScore <= p.maxScore)?.profile || 8);
+
+                        if (this.currentProfile !== idealProfile) {
+                            this.currentProfile = idealProfile;
+                            document.dispatchEvent(new CustomEvent('changeDungeonProfile', { detail: { profileNumber: this.currentProfile } }));
+                        } else if (this.evo1ActiveProfile && this.evo1ActiveProfile !== this.currentProfile) {
+                            // Sincronizzazione Bidirezionale: Evo1 è de-sincronizzato
+                            console.log(`[AutoProfiler] Evo1 divergence detected. Expected: ${this.currentProfile}, Evo1 reports: ${this.evo1ActiveProfile}. Re-syncing...`);
+                            document.dispatchEvent(new CustomEvent('changeDungeonProfile', { detail: { profileNumber: this.currentProfile } }));
+                        }
+                    }
+                }, 5000); // Check ogni 5 secondi invece di 12.4
+            }
+
+            // Ascolta lo stato di Evo1
+            document.addEventListener('dungeonProfileState', (e) => {
+                if (e.detail && e.detail.profileNumber) {
+                    this.evo1ActiveProfile = e.detail.profileNumber;
+                }
+            });
         },
         loadSettings() {
             const saved = GM_getValue('AutoProfile_Settings_v1', null);
@@ -75,7 +99,7 @@
                             this.settings[key] = parsed[key];
                         }
                     }
-                } catch(e) { console.warn("Failed to parse settings", e); }
+                } catch (e) { console.warn("Failed to parse settings", e); }
             }
         },
         saveSettings() { GM_setValue('AutoProfile_Settings_v1', JSON.stringify(this.settings)); },
@@ -93,36 +117,51 @@
         calculateRiskScore(simulatedData = null) {
             const sourceTitanData = simulatedData ? simulatedData.titans : this.lastTitanData;
             const sourceProgressData = simulatedData ? simulatedData.progress : this.lastProgressData;
-            if (!sourceTitanData || !sourceProgressData) {
-                if (!simulatedData) { this.currentRiskScore = null; this.scoreBreakdown = {}; }
-                return { finalScore: 0, breakdown: {} };
-            }
-
-            const titans = Object.values(sourceTitanData).flat();
-            const relevantTitans = titans.filter(t => !(t.hpPercent === 0 && t.energy === 0 && !t.isDead));
-            if (relevantTitans.length === 0) {
-                if (!simulatedData) { this.currentRiskScore = null; this.scoreBreakdown = {}; }
-                return { finalScore: 0, breakdown: {} };
-            }
 
             let avgHealth, minHealth, deadCount, avgEnergy;
-            const livingTitans = relevantTitans.filter(t => !t.isDead);
+            let isSafeStart = false;
 
-            if (simulatedData) {
-                minHealth = simulatedData.minHealth;
-                deadCount = simulatedData.deadTitans;
-                avgHealth = livingTitans.length > 0 ? simulatedData.avgHealth : 0;
-                avgEnergy = livingTitans.length > 0 ? simulatedData.avgEnergy : 0;
-            } else {
-                let totalHealth = 0, totalEnergy = 0;
-                minHealth = 100;
-                if (livingTitans.length > 0) {
-                    livingTitans.forEach(t => { totalHealth += t.hpPercent; totalEnergy += t.energy; if (t.hpPercent < minHealth) minHealth = t.hpPercent; });
-                    deadCount = relevantTitans.length - livingTitans.length;
-                    avgHealth = totalHealth / livingTitans.length;
-                    avgEnergy = totalEnergy / livingTitans.length;
+            if (!sourceTitanData || !sourceProgressData) {
+                if (!simulatedData) {
+                    // Safe Start Attivato (Assenza di dati)
+                    isSafeStart = true;
+                    avgHealth = 20;
+                    minHealth = 20;
+                    deadCount = 3; // Come richiesto (4002, 4011, 4021)
+                    avgEnergy = 100; // Valore interno di energia 0-1000 (10% = 100)
                 } else {
-                    deadCount = relevantTitans.length; avgHealth = 0; avgEnergy = 0;
+                    return { finalScore: 0, breakdown: {} };
+                }
+            } else {
+                const titans = Object.values(sourceTitanData).flat();
+                const relevantTitans = titans.filter(t => !(t.hpPercent === 0 && t.energy === 0 && !t.isDead));
+                if (relevantTitans.length === 0) {
+                    if (!simulatedData) { this.currentRiskScore = null; this.scoreBreakdown = {}; }
+                    return { finalScore: 0, breakdown: {} };
+                }
+
+                const livingTitans = relevantTitans.filter(t => !t.isDead);
+
+                if (simulatedData) {
+                    minHealth = simulatedData.minHealth;
+                    deadCount = simulatedData.deadTitans;
+                    avgHealth = livingTitans.length > 0 ? simulatedData.avgHealth : 0;
+                    avgEnergy = livingTitans.length > 0 ? simulatedData.avgEnergy : 0;
+                } else {
+                    let totalHealth = 0, totalEnergy = 0;
+                    minHealth = 100;
+                    if (livingTitans.length > 0) {
+                        livingTitans.forEach(t => {
+                            totalHealth += t.hpPercent;
+                            totalEnergy += t.energy;
+                            if (t.hpPercent < minHealth) minHealth = t.hpPercent;
+                        });
+                        deadCount = relevantTitans.length - livingTitans.length;
+                        avgHealth = totalHealth / livingTitans.length;
+                        avgEnergy = totalEnergy / livingTitans.length;
+                    } else {
+                        deadCount = relevantTitans.length; avgHealth = 0; avgEnergy = 0;
+                    }
                 }
             }
 
@@ -130,20 +169,21 @@
             const minHealthFactor = (100 - minHealth) * this.settings.weights.minHealth;
             const deadTitanFactor = deadCount * this.settings.weights.deadTitan;
             const energyFactor = (100 - (avgEnergy / 10)) * this.settings.weights.avgEnergy;
-            
+
             const sourceFloorData = simulatedData ? simulatedData.floor : this.lastFloorData;
-            const rawHealingBuff = (sourceFloorData && sourceFloorData.healingBuffs !== undefined) ? sourceFloorData.healingBuffs : 85; 
+            // Se isSafeStart è true, forziamo il buff a -100
+            const rawHealingBuff = isSafeStart ? -100 : ((sourceFloorData && sourceFloorData.healingBuffs !== undefined) ? sourceFloorData.healingBuffs : 85);
             const healingBuffPoints = Math.abs(rawHealingBuff);
             const healingBuffScore = healingBuffPoints * (this.settings.weights.healingBuff || 1.0);
 
             const finalScore = Math.round(healthFactor + minHealthFactor + deadTitanFactor + energyFactor + healingBuffScore);
 
             const breakdown = {
-                "Avg Health": { value: `${avgHealth.toFixed(0)}%`, score: healthFactor.toFixed(1) },
-                "Min Health": { value: `${minHealth}%`, score: minHealthFactor.toFixed(1) },
-                "Dead Titans": { value: deadCount, score: deadTitanFactor.toFixed(1) },
-                "Avg Energy": { value: `${(avgEnergy / 10).toFixed(0)}%`, score: energyFactor.toFixed(1) },
-                "Healing Buff": { value: `-${healingBuffPoints}%`, score: healingBuffScore.toFixed(1) },
+                "Avg Health": { value: isSafeStart ? `20% (Safe)` : `${avgHealth.toFixed(0)}%`, score: healthFactor.toFixed(1) },
+                "Min Health": { value: isSafeStart ? `20% (Safe)` : `${minHealth}%`, score: minHealthFactor.toFixed(1) },
+                "Dead Titans": { value: isSafeStart ? `3 (Safe)` : deadCount, score: deadTitanFactor.toFixed(1) },
+                "Avg Energy": { value: isSafeStart ? `10% (Safe)` : `${(avgEnergy / 10).toFixed(0)}%`, score: energyFactor.toFixed(1) },
+                "Healing Buff": { value: isSafeStart ? `-100% (Safe)` : `-${healingBuffPoints}%`, score: healingBuffScore.toFixed(1) },
                 "<b>Total Score</b>": { value: "", score: `<b>${finalScore}</b>` }
             };
 
@@ -593,9 +633,9 @@
         if (!document.getElementById('titanStatsPanel')) createGUI();
         if (dungeonData.floorNumber !== undefined) document.getElementById('dungeon-floor').textContent = `${dungeonData.floorNumber} (${dungeonData.floorType || 'info'})`;
         if (dungeonData.healingBuffs !== undefined) {
-             const buffEl = document.getElementById('dungeon-healing-buffs');
-             const weight = AutoProfiler.settings.weights.healingBuff || 1.0;
-             if (buffEl) buffEl.innerHTML = `-${Math.abs(dungeonData.healingBuffs)}% <span style="color:#aaa; font-size:0.8em;">(Risk x${weight})</span>`;
+            const buffEl = document.getElementById('dungeon-healing-buffs');
+            const weight = AutoProfiler.settings.weights.healingBuff || 1.0;
+            if (buffEl) buffEl.innerHTML = `-${Math.abs(dungeonData.healingBuffs)}% <span style="color:#aaa; font-size:0.8em;">(Risk x${weight})</span>`;
         }
         if (dungeonData.primeElement !== undefined) { const opEl = document.getElementById('dungeon-opponent'); opEl.textContent = `${dungeonData.primeElement.toUpperCase()}`; opEl.className = `info-value ${dungeonData.primeElement}`; }
         if (dungeonData.currentTitanite !== undefined) document.getElementById('dungeon-titanite').textContent = `${dungeonData.currentTitanite} / ${dungeonData.maxTitanite}`;
