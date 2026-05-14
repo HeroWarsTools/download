@@ -3,7 +3,7 @@
 // @name:en			UPBestDungeonExt3
 // @name:ru			UPBestDungeonExt3
 // @namespace		UPBestDungeonExt3
-// @version			0.0.22.Evo1.5.4
+// @version			0.0.22.Evo1.6.2.2
 // @description		Extension for HeroWarsHelper script
 // @description:en	Extension for HeroWarsHelper script
 // @description:ru	Расширение для скрипта HeroWarsHelper
@@ -16,6 +16,8 @@
 // @grant			GM_getValue
 // @grant			GM_setValue
 // @grant			GM_xmlhttpRequest
+// @connect			raw.githubusercontent.com
+// @connect			github.com
 // @run-at			document-end
 // ==/UserScript==
 
@@ -63,7 +65,21 @@
 			{ maxScore: 60, profile: 3 }, { maxScore: 80, profile: 4 },
 			{ maxScore: 100, profile: 5 }, { maxScore: 150, profile: 6 },
 			{ maxScore: 200, profile: 7 }, { maxScore: 999, profile: 8 }
-		]
+		],
+
+		// NEW: Titan-Specific Calibration Weights
+		titanWeights: {
+			// Water (400x)
+			4000: { hp: 1.5, energy: 1.5 }, 4001: { hp: 1.0, energy: 1.5 }, 4002: { hp: 0.8, energy: 0.6 }, 4003: { hp: 1.0, energy: 1.0 }, 4004: { hp: 1.0, energy: 1.3 },
+			// Fire (401x)
+			4010: { hp: 1.5, energy: 1.2 }, 4011: { hp: 1.5, energy: 1.0 }, 4012: { hp: 0.8, energy: 0.8 }, 4013: { hp: 1.0, energy: 1.2 }, 4014: { hp: 1.0, energy: 1.3 },
+			// Earth (402x)
+			4020: { hp: 1.2, energy: 1.4 }, 4021: { hp: 1.0, energy: 0.8 }, 4022: { hp: 1.2, energy: 1.8 }, 4023: { hp: 1.0, energy: 1.3 }, 4024: { hp: 1.0, energy: 1.3 },
+			// Light (403x)
+			4030: { hp: 1.0, energy: 1.0 }, 4031: { hp: 0.8, energy: 0.8 }, 4032: { hp: 0.8, energy: 1.0 }, 4033: { hp: 0.8, energy: 1.0 }, 4034: { hp: 1.0, energy: 1.0 },
+			// Dark (404x)
+			4040: { hp: 1.0, energy: 1.0 }, 4041: { hp: 0.8, energy: 0.8 }, 4042: { hp: 0.8, energy: 1.0 }, 4043: { hp: 0.8, energy: 1.1 }, 4044: { hp: 0.8, energy: 1.0 }
+		}
 	};
 
 
@@ -192,6 +208,8 @@
 				window.Evo1LoadDOM(savedProfiles[profileKey]);
 				window.Evo1SaveLogic();
 			}
+			// Sincronizzazione Bidirezionale: avvisa il Pannello del profilo attivo
+			document.dispatchEvent(new CustomEvent('dungeonProfileState', { detail: { profileNumber: profileNumber } }));
 			const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
 			const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
 			setProg(`Profile ${profileNumber} loaded.`, false);
@@ -205,6 +223,8 @@
 				window.Evo1LoadDOM(DEFAULT_CONFIG);
 				window.Evo1SaveLogic();
 			}
+			// Sincronizzazione Bidirezionale: avvisa il Pannello anche nel caso fallback
+			document.dispatchEvent(new CustomEvent('dungeonProfileState', { detail: { profileNumber: profileNumber } }));
 
 			const setProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.setProgress) || console.log);
 			const hideProg = ((typeof window.HWHFuncs !== 'undefined' && window.HWHFuncs.hideProgress) || (() => { }));
@@ -351,7 +371,8 @@
 						<button id="btn_load_p${i}" class="hwh-prof-btn hwh-btn-load" title="Load from P${i}">Load</button>
 					</div>`;
 				}
-				profilesHTML += '<div style="margin-top:8px;"><button id="btn_web_import" class="hwh-native-green-btn" style="width:100%; font-size:12px; padding:4px;">🌐 Web</button></div>';
+				profilesHTML += '<div style="margin-top:8px; display:flex; gap:4px;"><button id="btn_web_import" class="hwh-native-green-btn" style="flex:1; font-size:12px; padding:4px;">🌐 Web</button><button id="btn_web2_import" class="hwh-native-green-btn" style="flex:1; font-size:12px; padding:4px; background: radial-gradient(circle, #1b6fa4 0%, #04192f 150%);">🌐 Web 2</button></div>';
+				profilesHTML += '<div style="margin-top:4px;"><button id="btn_save_all" class="hwh-native-green-btn" style="width:100%; font-size:12px; padding:4px; background: radial-gradient(circle, #a4641b 0%, #2f1a04 150%);">💾 Save Current To All (P1-P8)</button></div>';
 				profilesHTML += '</div></div>';
 
 				const renderRow = (id, label, val, step, color = '#ccc') => `
@@ -388,23 +409,87 @@
 				paramsCol2HTML += renderRow('inp_energyWeight', 'Energy Weight', cfg.decision_energyWeight, 0.5);
 				paramsCol2HTML += '</div>';
 
+				let titanWeightsHTML = '<div id="hwh_titan_weights_panel" style="display:flex; flex-direction:column; max-height:500px; overflow-y:auto; width:100%;">';
+				titanWeightsHTML += '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #555; margin-bottom:10px; padding-bottom:5px;">';
+				titanWeightsHTML += '<div style="color:#e6c300; font-size:16px; font-weight:bold;">⚖️ Titan-Specific Weights (Dynamically Adjusted <50%)</div>';
+				titanWeightsHTML += '<button id="btn_back_main" class="hwh-native-green-btn" style="padding:4px 10px; font-size:12px;">⬅️ Back</button>';
+				titanWeightsHTML += '</div>';
+
+				const renderTitanWeightRow = (titanId) => {
+					const hpVal = cfg.titanWeights?.[titanId]?.hp ?? 1.0;
+					const enVal = cfg.titanWeights?.[titanId]?.energy ?? 1.0;
+					// Resolve Titan Name safe fallback
+					let titanName = 'Titan ' + titanId;
+					try {
+						if (window.cheats && window.cheats.translate) {
+							titanName = window.cheats.translate('LIB_HERO_NAME_' + titanId) || titanName;
+						} else if (window.lib && window.lib.data && window.lib.data.hero && window.lib.data.hero[titanId]) {
+							// fallback just in case translation is slow
+							titanName = window.lib.data.hero[titanId].name || titanName;
+						}
+					} catch (e) { }
+
+					// Determine color
+					let nameColor = '#ccc';
+					if (titanId >= 4000 && titanId <= 4004) nameColor = '#3498db'; // Water
+					else if (titanId >= 4010 && titanId <= 4014) nameColor = '#e74c3c'; // Fire
+					else if (titanId >= 4020 && titanId <= 4024) nameColor = '#2ecc71'; // Earth
+					else if (titanId >= 4030 && titanId <= 4034) nameColor = '#bdc3c7'; // Light
+					else if (titanId >= 4040 && titanId <= 4044) nameColor = '#f1c40f'; // Dark
+
+					return `
+					<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.2); padding:6px; border-radius:4px; border-left: 3px solid ${nameColor};">
+						<label style="color:${nameColor}; font-size:14px; font-weight:bold; width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${titanName}">${titanName}</label>
+						<div style="display:flex; gap:10px; align-items:center;">
+							<div style="display:flex; align-items:center; gap:2px;">
+								<span style="font-size:11px; color:#aaa; width:22px;">HP:</span>
+								${renderRow(`inp_tw_${titanId}_hp`, '', hpVal, 0.1).replace(/justify-content:space-between;/, 'justify-content:center;')}
+							</div>
+							<div style="display:flex; align-items:center; gap:2px;">
+								<span style="font-size:11px; color:#aaa; width:22px;">En:</span>
+								${renderRow(`inp_tw_${titanId}_en`, '', enVal, 0.1).replace(/justify-content:space-between;/, 'justify-content:center;')}
+							</div>
+						</div>
+					</div>`;
+				};
+
+				const allTitanIds = [
+					4000, 4001, 4002, 4003, 4004,
+					4010, 4011, 4012, 4013, 4014,
+					4020, 4021, 4022, 4023, 4024,
+					4030, 4031, 4032, 4033, 4034,
+					4040, 4041, 4042, 4043, 4044
+				];
+
+				titanWeightsHTML += '<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 8px;">';
+				allTitanIds.forEach(id => {
+					titanWeightsHTML += renderTitanWeightRow(id);
+				});
+				titanWeightsHTML += '</div></div>';
+
 				const fullContentHTML = `
 				<div style="position: relative; padding-bottom: 10px;">
 					<div id="hwh_save_toast" style="display:none; position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:rgba(71, 164, 27, 0.9); color:#fff; padding:8px 20px; border-radius:5px; font-weight:bold; z-index:9999; border: 1px solid #1a2f04;">
 						Configuration Saved!
 					</div>
-					<div style="display:flex; gap:15px; min-width:850px; font-family:Arial, sans-serif;">
+					<div id="hwh_main_panel" style="display:flex; gap:15px; min-width:850px; font-family:Arial, sans-serif;">
 						<div style="flex:3;">${profilesHTML}</div>
 						<div style="flex:4; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;">
 							<h4 style="margin:0 0 10px 0; font-size:18px; color:#eee;">Evo1 Settings</h4>
 							${paramsCol1HTML}
 						</div>
-						<div style="flex:4; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;">
-							<h4 style="margin:0 0 10px 0; font-size:18px; color:#eee;">Advanced</h4>
+						<div style="flex:4; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px; height: 100%; display: flex; flex-direction: column;">
+							<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+								<h4 style="margin:0; font-size:18px; color:#eee;">Advanced</h4>
+								<button id="btn_open_weights" class="hwh-native-green-btn" style="padding:4px 8px; font-size:12px;">⚖️ Weights</button>
+							</div>
 							${paramsCol2HTML}
 						</div>
 					</div>
-					<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #444; flex-wrap: wrap;">
+					<div id="hwh_weights_container" style="display:none; min-width:850px; font-family:Arial, sans-serif; background:rgba(0,0,0,0.3); padding:10px; border-radius:5px;">
+						${titanWeightsHTML}
+					</div>
+					<div id="hwh_bottom_bar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #444; flex-wrap: wrap;">
 						<div style="display:flex; gap:10px; align-items:center;">
 							<button id="btn_global_save" class="hwh-native-green-btn">💾 Save Configuration</button>
 							<button id="btn_set_default" class="hwh-native-green-btn" style="background: radial-gradient(circle, #a4811b 0%, #2f2504 150%);">Set Default</button>
@@ -436,6 +521,16 @@
 					DungeoExt3_Config.ga_eliteCount = getVal('inp_elite');
 					DungeoExt3_Config.decision_hpWeight = getVal('inp_hpWeight');
 					DungeoExt3_Config.decision_energyWeight = getVal('inp_energyWeight');
+
+					const allTitanIds = [4000, 4001, 4002, 4003, 4004, 4010, 4011, 4012, 4013, 4014, 4020, 4021, 4022, 4023, 4024, 4030, 4031, 4032, 4033, 4034, 4040, 4041, 4042, 4043, 4044];
+					DungeoExt3_Config.titanWeights = {};
+					allTitanIds.forEach(id => {
+						DungeoExt3_Config.titanWeights[id] = {
+							hp: getVal(`inp_tw_${id}_hp`),
+							energy: getVal(`inp_tw_${id}_en`)
+						};
+					});
+
 					saveCurrentConfig();
 					saveConfig();
 				};
@@ -455,6 +550,15 @@
 					setVal('inp_elite', pcfg.ga_eliteCount ?? DEFAULT_CONFIG.ga_eliteCount);
 					setVal('inp_hpWeight', pcfg.decision_hpWeight ?? DEFAULT_CONFIG.decision_hpWeight);
 					setVal('inp_energyWeight', pcfg.decision_energyWeight ?? DEFAULT_CONFIG.decision_energyWeight);
+
+					const tw = pcfg.titanWeights || DEFAULT_CONFIG.titanWeights;
+					const allTitanIds = [4000, 4001, 4002, 4003, 4004, 4010, 4011, 4012, 4013, 4014, 4020, 4021, 4022, 4023, 4024, 4030, 4031, 4032, 4033, 4034, 4040, 4041, 4042, 4043, 4044];
+					if (tw) {
+						allTitanIds.forEach(id => {
+							setVal(`inp_tw_${id}_hp`, tw[id]?.hp ?? 1.0);
+							setVal(`inp_tw_${id}_en`, tw[id]?.energy ?? 1.0);
+						});
+					}
 				};
 
 				const showToast = (msg, color = 'rgba(71, 164, 27, 0.9)') => {
@@ -483,6 +587,16 @@
 								showToast(e.target.checked ? 'Auto Load Enabled' : 'Auto Load Disabled', 'rgba(164, 129, 27, 0.9)');
 							});
 						}
+
+						document.getElementById('btn_open_weights')?.addEventListener('click', () => {
+							document.getElementById('hwh_main_panel').style.display = 'none';
+							document.getElementById('hwh_weights_container').style.display = 'flex';
+						});
+
+						document.getElementById('btn_back_main')?.addEventListener('click', () => {
+							document.getElementById('hwh_weights_container').style.display = 'none';
+							document.getElementById('hwh_main_panel').style.display = 'flex';
+						});
 						for (let i = 1; i <= 8; i++) {
 							document.getElementById(`btn_save_p${i}`).addEventListener('click', () => {
 								window.Evo1SaveLogic();
@@ -496,6 +610,8 @@
 									window.Evo1SaveLogic();
 									// -- FIX: Avvisiamo il pannello che abbiamo forzato un profilo manuale
 									document.dispatchEvent(new CustomEvent('manualProfileChanged'));
+									// Sync bidirezionale: avvisa il Pannello quale profilo è caricato
+									document.dispatchEvent(new CustomEvent('dungeonProfileState', { detail: { profileNumber: i } }));
 									setProgress(`Loaded P${i}`, false); setTimeout(hideProgress, 1000);
 								} else {
 									setProgress(`P${i} empty`, false); setTimeout(hideProgress, 1000);
@@ -587,6 +703,66 @@
 										hideProgress();
 									});
 							}
+						});
+
+						// Web 2 Import
+						document.getElementById('btn_web2_import')?.addEventListener('click', () => {
+							setProgress('Fetching from Web 2...', false);
+							const fetchUrl2 = 'https://github.com/HeroWarsTools/dungeon/raw/refs/heads/main/W2Ext3.json';
+							if (typeof GM_xmlhttpRequest !== 'undefined') {
+								GM_xmlhttpRequest({
+									method: 'GET',
+									url: fetchUrl2,
+									onload: function (response) {
+										try {
+											if (response.status !== 200) throw new Error('HTTP Status ' + response.status);
+											const data = JSON.parse(response.responseText);
+											if (data.profiles) {
+												savedProfiles = data.profiles;
+												saveProfilesToStorage();
+											}
+											if (data.config) {
+												window.Evo1LoadDOM(data.config);
+												window.Evo1SaveLogic();
+											}
+											showToast('Web 2 Profiles Loaded!', 'rgba(27, 111, 164, 0.9)');
+										} catch (e) {
+											console.error(e);
+											showToast('Parse Failed!', 'rgba(164, 27, 27, 0.9)');
+										}
+										hideProgress();
+									},
+									onerror: function (error) {
+										console.error(error);
+										showToast('Fetch Failed!', 'rgba(164, 27, 27, 0.9)');
+										hideProgress();
+									}
+								});
+							} else {
+								fetch(fetchUrl2)
+									.then(res => res.json())
+									.then(data => {
+										if (data.profiles) { savedProfiles = data.profiles; saveProfilesToStorage(); }
+										if (data.config) { window.Evo1LoadDOM(data.config); window.Evo1SaveLogic(); }
+										showToast('Web 2 Profiles Loaded!', 'rgba(27, 111, 164, 0.9)');
+										hideProgress();
+									})
+									.catch(e => {
+										console.error(e);
+										showToast('Fetch Failed (CORS/CSP)!', 'rgba(164, 27, 27, 0.9)');
+										hideProgress();
+									});
+							}
+						});
+
+						// Save to All Profiles (P1-P8)
+						document.getElementById('btn_save_all')?.addEventListener('click', () => {
+							window.Evo1SaveLogic();
+							for (let p = 1; p <= 8; p++) {
+								savedProfiles[`profile${p}`] = { ...DungeoExt3_Config };
+							}
+							saveProfilesToStorage();
+							showToast('Saved to ALL Profiles (P1-P8)!', 'rgba(164, 100, 27, 0.9)');
 						});
 
 						// Local File Export
@@ -1861,6 +2037,33 @@
 		}
 	}
 
+	// --- START: Titan Weights Helper ---
+	function getTitanWeight(titanId, type, titanState = null) {
+		let weight = 1.0;
+		if (typeof window !== 'undefined' && window.CustomTitanWeights && window.CustomTitanWeights[titanId]) {
+			if (window.CustomTitanWeights[titanId][type] !== undefined) {
+				weight = Number(window.CustomTitanWeights[titanId][type]);
+			}
+		} else if (typeof DungeoExt3_Config !== 'undefined' && DungeoExt3_Config.titanWeights && DungeoExt3_Config.titanWeights[titanId]) {
+			if (DungeoExt3_Config.titanWeights[titanId][type] !== undefined) {
+				weight = Number(DungeoExt3_Config.titanWeights[titanId][type]);
+			}
+		}
+
+		// Dynamic Weighting logic for Health
+		if (type === 'hp' && titanState && titanState.maxHp) {
+			const hpRatio = titanState.hp / titanState.maxHp;
+			if (hpRatio < 0.35) {
+				weight *= 2.5;
+			} else if (hpRatio < 0.65) {
+				weight *= 1.75;
+			}
+		}
+
+		return weight;
+	}
+	// --- END: Titan Weights Helper ---
+
 	class DungeonUtils {
 		static getState(result) {
 			const isAllDead = Object.values(result.progress[0].attackers.heroes).every((item) => item.isDead);
@@ -1875,12 +2078,22 @@
 			let initialHP = 0;
 			let initialEnergy = 0;
 			const beforeTitans = result.battleData.attackers;
+			// Pre-calculate weights for this specific evaluation
+			const titanWeightsCache = {};
+
 			for (let titanId in beforeTitans) {
 				const titan = beforeTitans[titanId];
 				const state = titan.state;
 				if (state) {
-					initialHP += state.hp / titan.hp;
-					initialEnergy += state.energy / 1e3;
+					const dynamicState = { hp: state.hp, maxHp: titan.hp };
+					const hpWt = getTitanWeight(titanId, 'hp', dynamicState);
+					const enWt = getTitanWeight(titanId, 'energy');
+					titanWeightsCache[titanId] = { hpWt, enWt };
+
+					initialHP += hpWt * (state.hp / titan.hp);
+					initialEnergy += enWt * (state.energy / 1e3);
+				} else {
+					titanWeightsCache[titanId] = { hpWt: 1.0, enWt: 1.0 };
 				}
 			}
 
@@ -1889,8 +2102,10 @@
 			const afterTitans = result.progress[0].attackers.heroes;
 			for (let titanId in afterTitans) {
 				const titan = afterTitans[titanId];
-				afterHP += titan.hp / beforeTitans[titanId].hp;
-				afterEnergy += titan.energy / 1e3;
+				const hpWt = titanWeightsCache[titanId]?.hpWt ?? 1.0;
+				const enWt = titanWeightsCache[titanId]?.enWt ?? 1.0;
+				afterHP += hpWt * (titan.hp / beforeTitans[titanId].hp);
+				afterEnergy += enWt * (titan.energy / 1e3);
 			}
 
 			const beforeIds = Object.keys(beforeTitans);
