@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            HWH Auto-Buyer
 // @namespace       HWH.Addons
-// @version         5.9.11
+// @version         5.9.12
 // @description     Advanced Auto-Buyer with I18N support and fixed schedulers.
 // @description:ru  Продвинутый авто-покупщик с поддержкой I18N и исправленными планировщиками.
 // @author          HWH Extension Architect
@@ -70,18 +70,27 @@
 
     function getStorage(key, def) {
         if (isSyncEnabled()) {
-            const val = GM_getValue(key, null);
-            return val !== null ? val : def;
+            let val = GM_getValue(key, null);
+            if (val !== null) {
+                if (typeof val === 'string') {
+                    try { val = JSON.parse(val); } catch(e) {}
+                }
+                unsafeWindow.HWHFuncs.setSaveVal(key, val);
+                return val;
+            }
         }
-        return unsafeWindow.HWHFuncs.getSaveVal(key, def);
+        let localVal = unsafeWindow.HWHFuncs.getSaveVal(key, def);
+        if (typeof localVal === 'string') {
+            try { localVal = JSON.parse(localVal); } catch(e) {}
+        }
+        return localVal;
     }
 
     function setStorage(key, val) {
         if (isSyncEnabled()) {
             GM_setValue(key, val);
-        } else {
-            unsafeWindow.HWHFuncs.setSaveVal(key, val);
         }
+        unsafeWindow.HWHFuncs.setSaveVal(key, val);
     }
 
     const COLOR_MAP = {
@@ -945,9 +954,10 @@
                     if (slot.bought || !slot.reward) return;
                     const rType = Object.keys(slot.reward)[0];
                     const rId = Object.keys(slot.reward[rType])[0];
+                    const exactItemKey = `${rType}_${rId}`;
                     const normalizedType = rType.replace('fragment', '').toLowerCase();
-                    const itemKey = `${normalizedType}_${rId}`;
-                    const settings = savedData[itemKey];
+                    const normalizedItemKey = `${normalizedType}_${rId}`;
+                    const settings = savedData[exactItemKey] || savedData[normalizedItemKey];
                     if (settings && settings.buy && !settings.hidden) {
                         const costType = Object.keys(slot.cost)[0];
                         if (costType === 'starmoney') return;
