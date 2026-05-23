@@ -109,6 +109,8 @@
 
     <script>
         let gridData = [];
+        let copiedCasellaColors = null;
+        let copiedBottoneColors = null;
 
         // Gestione Importazione da File
         document.getElementById('importFile').addEventListener('change', function(e) {
@@ -165,6 +167,18 @@
                                 <input type="color" value="${item.coloreTestoCasella || '#000000'}" onchange="updateData(${index}, 'coloreTestoCasella', this.value)">
                                 <span class="text-[10px] uppercase font-mono">TX</span>
                             </div>
+                            <div class="flex gap-2 mt-1 border-t pt-1 w-full justify-center">
+                                <button onclick="copyColors(${index}, 'casella')" class="text-gray-400 hover:text-blue-500 transition" title="Copia Colori Casella">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                    </svg>
+                                </button>
+                                <button onclick="pasteColors(${index}, 'casella')" class="text-gray-400 hover:text-green-500 transition ${copiedCasellaColors ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}" ${copiedCasellaColors ? '' : 'disabled'} title="Incolla Colori Casella">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </td>
                     <td class="p-3">
@@ -176,6 +190,18 @@
                             <div class="flex items-center gap-2">
                                 <input type="color" value="${item.coloreTestoBottone || '#ffffff'}" onchange="updateData(${index}, 'coloreTestoBottone', this.value)">
                                 <span class="text-[10px] uppercase font-mono">TX</span>
+                            </div>
+                            <div class="flex gap-2 mt-1 border-t pt-1 w-full justify-center">
+                                <button onclick="copyColors(${index}, 'bottone')" class="text-gray-400 hover:text-blue-500 transition" title="Copia Colori Bottone">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                                    </svg>
+                                </button>
+                                <button onclick="pasteColors(${index}, 'bottone')" class="text-gray-400 hover:text-green-500 transition ${copiedBottoneColors ? 'opacity-100' : 'opacity-30 cursor-not-allowed'}" ${copiedBottoneColors ? '' : 'disabled'} title="Incolla Colori Bottone">
+                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     </td>
@@ -231,6 +257,33 @@
             const temp = gridData[index];
             gridData[index] = gridData[targetIndex];
             gridData[targetIndex] = temp;
+            renderTable();
+        }
+
+        // --- FUNZIONI COPIA/INCOLLA COLORI ---
+        function copyColors(index, type) {
+            if (type === 'casella') {
+                copiedCasellaColors = {
+                    bg: gridData[index].coloreCasella,
+                    text: gridData[index].coloreTestoCasella
+                };
+            } else if (type === 'bottone') {
+                copiedBottoneColors = {
+                    bg: gridData[index].coloreBottone,
+                    text: gridData[index].coloreTestoBottone
+                };
+            }
+            renderTable(); // Aggiorna la tabella per abilitare i pulsanti incolla
+        }
+
+        function pasteColors(index, type) {
+            if (type === 'casella' && copiedCasellaColors) {
+                gridData[index].coloreCasella = copiedCasellaColors.bg;
+                gridData[index].coloreTestoCasella = copiedCasellaColors.text;
+            } else if (type === 'bottone' && copiedBottoneColors) {
+                gridData[index].coloreBottone = copiedBottoneColors.bg;
+                gridData[index].coloreTestoBottone = copiedBottoneColors.text;
+            }
             renderTable();
         }
 
