@@ -67,6 +67,7 @@
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="bg-gray-50 border-b">
+                        <th class="p-3 w-10"></th>
                         <th class="p-3 text-xs uppercase text-gray-500 font-bold">Titolo & Link</th>
                         <th class="p-3 text-xs uppercase text-gray-500 font-bold">Descrizione</th>
                         <th class="p-3 text-xs uppercase text-gray-500 font-bold text-center">Colori Casella</th>
@@ -134,7 +135,19 @@
                 const tr = document.createElement('tr');
                 tr.className = "border-b hover:bg-gray-50 transition";
                 
+                // Attributi Drag & Drop
+                tr.setAttribute('ondragstart', `dragStart(event, ${index})`);
+                tr.setAttribute('ondragover', `dragOver(event, ${index})`);
+                tr.setAttribute('ondragend', `dragEnd(event)`);
+                tr.setAttribute('ondrop', `dragDrop(event, ${index})`);
+                tr.setAttribute('ondragleave', `dragLeave(event)`);
+                
                 tr.innerHTML = `
+                    <td class="p-3 cursor-grab text-gray-400 text-center drag-handle" onmousedown="enableDrag(this)" onmouseup="disableDrag(this)" onmouseleave="disableDrag(this)" title="Trascina per riordinare">
+                        <svg class="w-5 h-5 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+                        </svg>
+                    </td>
                     <td class="p-3">
                         <input type="text" value="${item.titolo || ''}" onchange="updateData(${index}, 'titolo', this.value)" placeholder="Titolo" class="block w-full mb-1 border rounded px-2 py-1 text-sm font-bold">
                         <input type="text" value="${item.link || ''}" onchange="updateData(${index}, 'link', this.value)" placeholder="URL" class="block w-full border rounded px-2 py-1 text-xs text-blue-600">
@@ -167,9 +180,21 @@
                         </div>
                     </td>
                     <td class="p-3 text-right">
-                        <button onclick="removeRow(${index})" class="text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg transition text-sm">
-                            Elimina
-                        </button>
+                        <div class="flex items-center justify-end gap-1">
+                            <button onclick="moveRow(${index}, -1)" ${index === 0 ? 'disabled class="text-gray-300 cursor-not-allowed p-1.5"' : 'class="text-gray-500 hover:bg-gray-100 p-1.5 rounded-lg transition"'} title="Sposta in alto">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                                </svg>
+                            </button>
+                            <button onclick="moveRow(${index}, 1)" ${index === gridData.length - 1 ? 'disabled class="text-gray-300 cursor-not-allowed p-1.5"' : 'class="text-gray-500 hover:bg-gray-100 p-1.5 rounded-lg transition"'} title="Sposta in basso">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <button onclick="removeRow(${index})" class="text-red-500 hover:bg-red-50 px-3 py-1 rounded-lg transition text-sm">
+                                Elimina
+                            </button>
+                        </div>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -196,6 +221,86 @@
         function removeRow(index) {
             if(confirm("Sicuro di voler eliminare questa voce?")) {
                 gridData.splice(index, 1);
+                renderTable();
+            }
+        }
+
+        function moveRow(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= gridData.length) return;
+            const temp = gridData[index];
+            gridData[index] = gridData[targetIndex];
+            gridData[targetIndex] = temp;
+            renderTable();
+        }
+
+        // --- FUNZIONI DRAG & DROP ---
+        let dragSourceIndex = null;
+
+        function enableDrag(el) {
+            const tr = el.closest('tr');
+            tr.setAttribute('draggable', 'true');
+        }
+
+        function disableDrag(el) {
+            const tr = el.closest('tr');
+            tr.removeAttribute('draggable');
+        }
+
+        function dragStart(e, index) {
+            dragSourceIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+            // Imposta classe visiva sulla riga trascinata
+            setTimeout(() => {
+                e.target.classList.add('opacity-40', 'bg-blue-50');
+            }, 0);
+        }
+
+        function dragOver(e, index) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            const tr = e.target.closest('tr');
+            if (tr && index !== dragSourceIndex) {
+                // Rimuove bordi da tutte le righe prima per pulizia
+                document.querySelectorAll('#tableBody tr').forEach(row => {
+                    if (row !== tr) {
+                        row.style.borderTop = '';
+                        row.style.borderBottom = '';
+                    }
+                });
+                // Linea indicatrice blu sopra o sotto
+                if (index < dragSourceIndex) {
+                    tr.style.borderTop = '3px solid #3b82f6';
+                    tr.style.borderBottom = '';
+                } else {
+                    tr.style.borderBottom = '3px solid #3b82f6';
+                    tr.style.borderTop = '';
+                }
+            }
+        }
+
+        function dragLeave(e) {
+            const tr = e.target.closest('tr');
+            if (tr) {
+                tr.style.borderTop = '';
+                tr.style.borderBottom = '';
+            }
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('opacity-40', 'bg-blue-50');
+            document.querySelectorAll('#tableBody tr').forEach(tr => {
+                tr.style.borderTop = '';
+                tr.style.borderBottom = '';
+                tr.removeAttribute('draggable');
+            });
+        }
+
+        function dragDrop(e, index) {
+            e.preventDefault();
+            if (dragSourceIndex !== null && dragSourceIndex !== index) {
+                const movedItem = gridData.splice(dragSourceIndex, 1)[0];
+                gridData.splice(index, 0, movedItem);
                 renderTable();
             }
         }
