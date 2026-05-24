@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Ext HwH Stage Rewards Collector (Auto)
 // @namespace    http://tampermonkey.net/
-// @version      5.1
-// @description  Automatically collects multi-stage event rewards after an 8.4s delay.
+// @version      5.2
+// @description  Beta: Automatically collects multi-stage event rewards (includes saleShowcase fixes).
 // @author       YourName
 // @match        https://www.hero-wars.com/*
 // @match        https://apps-1701433570146040.apps.fbsbx.com/*
@@ -40,29 +40,76 @@
 
                 const specialOffers = response.results[0].result.response;
 
-                // The simple, effective filter from the version that worked
-                const collectibleOffers = specialOffers.filter(offer =>
-                    offer.offerType === "stagesOffer" && !offer.freeRewardObtained
-                );
+                console.log("Extension: specialOffer_getAll response received. Total offers:", specialOffers.length);
+                console.log("Extension: Raw specialOffers:", JSON.stringify(specialOffers.slice(0, 3), null, 2));
+
+                // Accept multiple known collectible types (stagesOffer, saleShowcase, etc.)
+                const collectibleTypes = ['stagesOffer', 'saleShowcase', 'dailyReward'];
+                const collectibleOffers = specialOffers.filter(offer => {
+                    const isKnownType = collectibleTypes.includes(offer.offerType);
+                    // For saleShowcase, we don't check freeRewardObtained since it might not exist
+                    // For other types, check if reward hasn't been obtained yet
+                    const isNotCollected = (offer.offerType === 'saleShowcase') || !offer.freeRewardObtained;
+                    console.log(`Extension: Offer ID ${offer.id} | Type: ${offer.offerType} | Known: ${isKnownType} | NotCollected: ${isNotCollected} | Full Obj:`, offer);
+                    return isKnownType && isNotCollected;
+                });
+
+                console.log("Extension: Filtered collectible offers count:", collectibleOffers.length);
+                if (collectibleOffers.length > 0) {
+                    console.log("Extension: Collectible offers:", JSON.stringify(collectibleOffers, null, 2));
+                }
 
                 if (collectibleOffers.length === 0) {
+                    console.log("Extension: No collectible offers found, exiting loop.");
                     break; // Exit the loop if no more collectible offers are found
                 }
 
-                const callsToMake = collectibleOffers.map(offer => ({
-                    name: "specialOffer_farmReward",
-                    args: { offerId: offer.id },
-                    ident: `specialOffer_farmReward_${offer.id}_loop${loopCount}`
-                }));
+                // Map offer types to the correct server call name when necessary
+                const callsToMake = collectibleOffers.map(offer => {
+                    let callName = 'specialOffer_farmReward';
+                    if (offer.offerType === 'saleShowcase') {
+                        callName = 'saleShowcase_farmReward';
+                    }
+                    return {
+                        name: callName,
+                        args: { offerId: offer.id },
+                        ident: `${callName}_${offer.id}_loop${loopCount}`
+                    };
+                });
 
-                const farmResult = await Send({ calls: callsToMake });
+                console.log("Extension: Will send farm calls sequentially:", JSON.stringify(callsToMake, null, 2));
+                let seqSuccess = 0;
+                // Send calls one-by-one to avoid batch errors from the server
+                for (const singleCall of callsToMake) {
+                    try {
+                        console.log(`Extension: Sending single farm call ${singleCall.ident}`);
+                        const singleResult = await Send({ calls: [singleCall] });
+                        console.log("Extension: singleFarmResult:", JSON.stringify(singleResult, null, 2));
 
-                if (farmResult && farmResult.results) {
-                    collectedInThisLoop = farmResult.results.length;
-                    totalCollectedCount += collectedInThisLoop;
-                    HWHFuncs.setProgress(`Collected ${totalCollectedCount} rewards...`, false);
-                } else {
-                    break; // Exit loop if farming fails or returns no results
+                        if (singleResult && singleResult.results && singleResult.results.length > 0) {
+                            const r = singleResult.results[0];
+                            if (!r.error && r.result) {
+                                seqSuccess++;
+                                totalCollectedCount++;
+                                HWHFuncs.setProgress(`Collected ${totalCollectedCount} rewards...`, false);
+                            } else if (r.error) {
+                                console.warn("Extension: farm call returned error:", JSON.stringify(r.error, null, 2));
+                            } else {
+                                console.log("Extension: farm call returned no usable result:", JSON.stringify(r, null, 2));
+                            }
+                        } else {
+                            console.warn("Extension: single farm call returned no results object:", JSON.stringify(singleResult, null, 2));
+                        }
+                    } catch (e) {
+                        console.error("Extension: Exception when sending single farm call:", e);
+                    }
+                    // small delay between single calls to be polite
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+
+                collectedInThisLoop = seqSuccess;
+                if (collectedInThisLoop === 0) {
+                    console.log("Extension: No successful farm results in this loop.");
                 }
             } catch (error) {
                 console.error("Extension: An error occurred during collection loop:", error);
