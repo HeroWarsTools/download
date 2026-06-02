@@ -1,0 +1,29 @@
+[
+  {
+    "titolo": "prova1",
+    "link": "https://",
+    "descrizione": "Descrizione di esempio",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "prova2",
+    "link": "https://",
+    "descrizione": "Descrizione di esempio",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "prova3",
+    "link": "https://",
+    "descrizione": "Descrizione di esempio",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  }
+]
