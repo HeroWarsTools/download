@@ -63,6 +63,33 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
+    "titolo": "💥Dungeon Starter",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/DungeonStarter.user.js",
+    "descrizione": "Suto Start Dungeon",
+    "coloreCasella": "#8a137e",
+    "coloreTestoCasella": "#dfea57",
+    "coloreBottone": "#8354bc",
+    "coloreTestoBottone": "#929511"
+  },
+  {
+    "titolo": "💖 Dungeon-Only 💖",
+    "link": "https://herowarstools.github.io/download/Dungeon_only/index.html",
+    "descrizione": "dungeon script place",
+    "coloreCasella": "#ffffff",
+    "coloreTestoCasella": "#1f2937",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
+    "titolo": "Dungeon Panel Ext3 Healing Buffs",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20TitanMonitor%20Ext3.1.user.js",
+    "descrizione": "for lastest versions",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff00",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
     "titolo": "Auto Buyer",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20Auto-buyer.user.js",
     "descrizione": "Purchase automatically items you choose from shop",
@@ -162,6 +189,15 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
+    "titolo": "Nuova Voce",
+    "link": "https://",
+    "descrizione": "Descrizione di esempio",
+    "coloreCasella": "#8000ff",
+    "coloreTestoCasella": "#ffff00",
+    "coloreBottone": "#2563eb",
+    "coloreTestoBottone": "#ffffff"
+  },
+  {
     "titolo": "New Character Ext",
     "link": "https://github.com/Green-oGo/HWHNewCharacterExt/raw/refs/heads/main/HWHNewCharacterExt.user.js",
     "descrizione": "Complete missions for the new character with just a few clicks",
@@ -171,30 +207,12 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "💥Dungeon Starter",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/DungeonStarter.user.js",
-    "descrizione": "Suto Start Dungeon",
-    "coloreCasella": "#8a137e",
-    "coloreTestoCasella": "#dfea57",
-    "coloreBottone": "#8354bc",
-    "coloreTestoBottone": "#929511"
-  },
-  {
     "titolo": "🔎 Stage Rewards 🔎",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/StageRewards.user.js",
     "descrizione": "Auto Collect items from Stages like weaving pattern or new character event",
     "coloreCasella": "#423f83",
     "coloreTestoCasella": "#ff8000",
     "coloreBottone": "#50c0a2",
-    "coloreTestoBottone": "#ffffff"
-  },
-  {
-    "titolo": "Dungeon Panel Ext3 Healing Buffs",
-    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/HWH%20TitanMonitor%20Ext3.1.user.js",
-    "descrizione": "for lastest versions",
-    "coloreCasella": "#8000ff",
-    "coloreTestoCasella": "#ffff00",
-    "coloreBottone": "#2563eb",
     "coloreTestoBottone": "#ffffff"
   }
 ]
