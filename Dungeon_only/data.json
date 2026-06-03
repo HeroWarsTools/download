@@ -3,27 +3,27 @@
     "titolo": "Panel",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_pannello_buff_risk.user.js",
     "descrizione": "Descrizione di esempio",
-    "coloreCasella": "#ffffff",
-    "coloreTestoCasella": "#1f2937",
-    "coloreBottone": "#2563eb",
-    "coloreTestoBottone": "#ffffff"
+    "coloreCasella": "#2a2a2a",
+    "coloreTestoCasella": "#ffe655",
+    "coloreBottone": "#77703e",
+    "coloreTestoBottone": "#9bf3fb"
   },
   {
     "titolo": "RED",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_HWD%20extention%20RED.user.js",
     "descrizione": "Descrizione di esempio",
-    "coloreCasella": "#ffffff",
-    "coloreTestoCasella": "#1f2937",
-    "coloreBottone": "#2563eb",
-    "coloreTestoBottone": "#ffffff"
+    "coloreCasella": "#2a2a2a",
+    "coloreTestoCasella": "#ffe655",
+    "coloreBottone": "#77703e",
+    "coloreTestoBottone": "#9bf3fb"
   },
   {
     "titolo": "Best Dungeon Evo1",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_BestDungExt3.22.Evo1.user.js",
     "descrizione": "Descrizione di esempio",
-    "coloreCasella": "#ffffff",
-    "coloreTestoCasella": "#1f2937",
-    "coloreBottone": "#2563eb",
-    "coloreTestoBottone": "#ffffff"
+    "coloreCasella": "#2a2a2a",
+    "coloreTestoCasella": "#ffe655",
+    "coloreBottone": "#77703e",
+    "coloreTestoBottone": "#9bf3fb"
   }
 ]
