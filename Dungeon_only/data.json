@@ -1,7 +1,7 @@
 [
   {
-    "titolo": "prova1",
-    "link": "https://",
+    "titolo": "Panel",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_pannello_buff_risk.user.js",
     "descrizione": "Descrizione di esempio",
     "coloreCasella": "#ffffff",
     "coloreTestoCasella": "#1f2937",
@@ -9,8 +9,8 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "prova2",
-    "link": "https://",
+    "titolo": "RED",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_HWD%20extention%20RED.user.js",
     "descrizione": "Descrizione di esempio",
     "coloreCasella": "#ffffff",
     "coloreTestoCasella": "#1f2937",
@@ -18,8 +18,8 @@
     "coloreTestoBottone": "#ffffff"
   },
   {
-    "titolo": "prova3",
-    "link": "https://",
+    "titolo": "Best Dungeon Evo1",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Dungeon_only/switch_BestDungExt3.22.Evo1.user.js",
     "descrizione": "Descrizione di esempio",
     "coloreCasella": "#ffffff",
     "coloreTestoCasella": "#1f2937",
