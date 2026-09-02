@@ -3,7 +3,7 @@
 // @name:en			HWHCraftItemsExt
 // @name:ru			HWHCraftItemsExt
 // @namespace		HWHCraftItemsExt
-// @version			1.0.13
+// @version			1.0.16.3
 // @description		HWH item crafting extension
 // @description:en	HWH item crafting extension
 // @description:ru	HWH расширение для создания предметов
@@ -20,6 +20,8 @@
 // @grant			GM_setValue
 // @grant			GM_getValue
 // @grant			GM_xmlhttpRequest
+// @connect			github.com
+// @connect			raw.githubusercontent.com
 // ==/UserScript==
 
 (function () {
@@ -155,7 +157,19 @@
 		}
 	}
 
+	function getColorMap() {
+		return {
+			1: { name: cheats.translate('LIB_ENUM_HEROCOLOR_1'), color: 'graphite' },
+			2: { name: cheats.translate('LIB_ENUM_HEROCOLOR_2'), color: 'green' },
+			3: { name: cheats.translate('LIB_ENUM_HEROCOLOR_4'), color: 'blue' },
+			4: { name: cheats.translate('LIB_ENUM_HEROCOLOR_7'), color: 'violet' },
+			5: { name: cheats.translate('LIB_ENUM_HEROCOLOR_11'), color: 'yellow' },
+			6: { name: cheats.translate('LIB_ENUM_HEROCOLOR_12'), color: 'red' },
+		};
+	}
+
 	async function onClickNewButton() {
+		console.log('[HWH-Craft DEBUG] onClickNewButton called!');
 		autoCraftEnabled = getSaveVal('autoCraftEnabled', false);
 		minGoldThreshold = Number(getSaveVal('minGoldThreshold', 1000000000));
 		initialTimer = Number(getSaveVal('initialTimer', 20));
@@ -163,17 +177,10 @@
 
 		let minGoldThresholdM = Math.floor(minGoldThreshold / 1000000);
 
-		const colors = {
-			1: { name: cheats.translate('LIB_ENUM_HEROCOLOR_1'), color: 'graphite' },
-			2: { name: cheats.translate('LIB_ENUM_HEROCOLOR_2'), color: 'green' },
-			3: { name: cheats.translate('LIB_ENUM_HEROCOLOR_4'), color: 'blue' },
-			4: { name: cheats.translate('LIB_ENUM_HEROCOLOR_7'), color: 'violet' },
-			5: { name: cheats.translate('LIB_ENUM_HEROCOLOR_11'), color: 'yellow' },
-			6: { name: cheats.translate('LIB_ENUM_HEROCOLOR_12'), color: 'red' },
-			// 7: { name: cheats.translate('UI_UNAVAILABLE'), color: 'brown' },
-		};
+		const colors = getColorMap();
 
 		const items = lib.data.inventoryItem.gear;
+		console.log('[HWH-Craft DEBUG] items loaded, keys:', Object.keys(items || {}).length, 'Alchemist Set (167) color:', items[167]?.color || items['167']?.color || 'NOT FOUND');
 
 		if (typeof unsafeWindow.HWHCraft_API === 'undefined') {
 			unsafeWindow.HWHCraft_API = {
@@ -350,9 +357,11 @@
 
 		const popupButtons = [];
 		for (const id in colors) {
+			console.log('[HWH-Craft DEBUG] Color button:', id, colors[id].name, colors[id].color);
 			popupButtons.push({
 				msg: colors[id].name,
 				result: async () => {
+					console.log('[HWH-Craft DEBUG] Color clicked:', id, colors[id].name);
 					await showItemCheckboxDialog(id, items, colors[id].name);
 				},
 				color: colors[id].color,
@@ -374,72 +383,169 @@
 		}
 	}
 
+	/**
+	 * Shows checkbox dialog for items of a specific color.
+	 * Supports both craftRecipe items and fragmentMergeCost items.
+	 * Fragment items (like Alchemist's Set) are marked with 🧩 icon.
+	 */
 	async function showItemCheckboxDialog(colorId, items, colorName) {
-		let autoCraftItemsObj = getSaveVal('autoCraftItemsObj', {});
+		while (true) {
+			colorId = Number(colorId);
+			let autoCraftItemsObj = getSaveVal('autoCraftItemsObj', {});
+			const colors = getColorMap();
+			colorName = colors[colorId].name;
 
-		const [userGetInfo, inventoryGet] = await Caller.send(['userGetInfo', 'inventoryGet']);
+			// DEBUG LOG
+			console.log(`[HWH-Craft DEBUG] showItemCheckboxDialog called with colorId=${colorId}, colorName=${colorName}`);
+			console.log(`[HWH-Craft DEBUG] items object:`, items);
+			console.log(`[HWH-Craft DEBUG] items keys count:`, Object.keys(items || {}).length);
 
-		let itemsOfColor = [];
-		for (const id in items) {
-			if (items[id].color == colorId) {
-				itemsOfColor.push({
-					id: Number(id),
-					name: cheats.translate('LIB_GEAR_NAME_' + id),
-					owned: inventoryGet['gear']?.[id] || 0
-				});
+			const [userGetInfo, inventoryGet] = await Caller.send(['userGetInfo', 'inventoryGet']);
+			const craftMan = new InventoryCraftManager(lib.data.inventoryItem, inventoryGet, userGetInfo.gold);
+
+			// DEBUG LOG - Check if Alchemist's Set (ID 167) exists
+			console.log(`[HWH-Craft DEBUG] Alchemist's Set (167) exists:`, items[167] || items['167'] || 'NOT FOUND');
+			if (items[167] || items['167']) {
+				const item167 = items[167] || items['167'];
+				console.log(`[HWH-Craft DEBUG] Item 167 color:`, item167.color, `vs selected colorId:`, colorId);
+				console.log(`[HWH-Craft DEBUG] Item 167 craftRecipe:`, item167.craftRecipe);
+				console.log(`[HWH-Craft DEBUG] Item 167 fragmentMergeCost:`, item167.fragmentMergeCost);
 			}
-		}
 
-		itemsOfColor.sort((a, b) => a.name.localeCompare(b.name));
+			let itemsOfColor = [];
+			let debugCount = 0;
+			for (const id in items) {
+				const item = items[id];
+				const hasCraftRecipe = item.craftRecipe !== null && item.craftRecipe !== undefined;
+				const hasFragmentMergeCost = item.fragmentMergeCost !== null && item.fragmentMergeCost !== undefined;
 
-		let gridHtml = `<div style="display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 30px; row-gap: 4px; max-height: 450px; overflow-y: auto; overflow-x: hidden; font-size: 11px; color: #fce1ac; padding-right: 5px;">`;
+				if (item.color == colorId && (hasCraftRecipe || hasFragmentMergeCost)) {
+					debugCount++;
+					// Mostra tutti gli oggetti craftabili, anche se non craftabili adesso
+					// canCraftNow indica se è possibile craftare ORA con le risorse attuali
+					const canCraftNow = craftMan.canCraft('gear', id, 1, 999999999999, true);
+					itemsOfColor.push({
+						id: Number(id),
+						name: cheats.translate('LIB_GEAR_NAME_' + id),
+						owned: inventoryGet['gear']?.[id] || 0,
+						isFragment: !hasCraftRecipe && hasFragmentMergeCost,
+						fragmentCount: item.fragmentMergeCost?.fragmentCount || 0,
+						fragmentGold: item.fragmentMergeCost?.gold || 0,
+						canCraftNow: canCraftNow,
+					});
+				}
+			}
+			// DEBUG LOG
+			console.log(`[HWH-Craft DEBUG] Items matching color ${colorId}:`, debugCount);
+			console.log(`[HWH-Craft DEBUG] Final itemsOfColor array:`, itemsOfColor);
 
-		for (let item of itemsOfColor) {
-			const isChecked = autoCraftItemsObj[item.id] !== undefined ? 'checked' : '';
-			const amount = autoCraftItemsObj[item.id] || 1;
-			const displayName = item.name.length > 15 ? item.name.substring(0, 15) + '...' : item.name;
-			gridHtml += `
-				<div style="display: flex; align-items: center; gap: 4px; border: 1px solid #444; padding: 2px; border-radius: 3px; background: rgba(0,0,0,0.3);">
-					<input type="checkbox" id="item_${item.id}" ${isChecked} onchange="HWHCraft_API.toggleItem(${item.id}, this.checked)" style="margin: 0;">
-					<input type="number" id="item_amount_${item.id}" value="${amount}" min="1" max="100" style="width: 45px; background: #170d07; color: #fce1ac; border: 1px solid #cf9250; text-align: center; font-size: 10px;" oninput="HWHCraft_API.updateAmount(${item.id}, this.value)">
-					<label for="item_${item.id}" style="cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;" title="${item.name}">${displayName} (<span style="color: #66ff66;">${item.owned}</span>)</label>
+			itemsOfColor.sort((a, b) => a.name.localeCompare(b.name));
+
+			let gridHtml = `<div style="display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 50px; row-gap: 10px; max-height: 500px; overflow-y: auto; overflow-x: hidden; font-size: 16px; color: #fce1ac; padding-right: 5px;">`;
+
+			for (let item of itemsOfColor) {
+				const isChecked = autoCraftItemsObj[item.id] !== undefined ? 'checked' : '';
+				const amount = autoCraftItemsObj[item.id] || 1;
+				const craftType = item.isFragment ? '🧩' : '🔧';
+				const displayName = item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
+				// Tooltip: mostra nome completo + info frammenti se presenti
+				let tooltipText = item.name;
+				if (item.isFragment && item.fragmentCount) {
+					tooltipText += ` (${item.fragmentCount} frag + ${item.fragmentGold.toLocaleString()} gold)`;
+				}
+				// Indicatore visivo: 🟢 craftabile ora, 🔴 non craftabile (mancano materiali)
+				const statusIcon = item.canCraftNow ? '🟢' : '🔴';
+				const statusColor = item.canCraftNow ? '#66ff66' : '#ff6666';
+				const opacity = item.canCraftNow ? '1' : '0.7';
+				gridHtml += `
+					<div style="display: flex; align-items: center; gap: 8px; border: 1px solid #444; padding: 4px; border-radius: 4px; background: rgba(0,0,0,0.3); opacity: ${opacity};">
+						<input type="checkbox" id="item_${item.id}" ${isChecked} onchange="HWHCraft_API.toggleItem(${item.id}, this.checked)" style="width: 18px; height: 18px; margin: 0;">
+						<input type="number" id="item_amount_${item.id}" value="${amount}" min="1" max="100" style="width: 60px; height: 28px; background: #170d07; color: #fce1ac; border: 1px solid #cf9250; text-align: center; font-size: 16px;" oninput="HWHCraft_API.updateAmount(${item.id}, this.value)">
+						<label for="item_${item.id}" style="cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; font-size: 16px;" title="${tooltipText}">${craftType} ${displayName} <span style="color: ${statusColor};">${statusIcon}</span> (<span style="color: #66ff66;">${item.owned}</span>)</label>
+					</div>
+				`;
+			}
+			gridHtml += `</div>`;
+
+			const html = `
+				<div style="min-width: 700px;">
+					<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; background: rgba(207, 146, 80, 0.1); padding: 8px; border-radius: 5px; border: 1px solid #cf9250;">
+						<div style="cursor: pointer; padding: 2px 20px; background: #2c1a0e; color: #fde5b6; border: 1px solid #cf9250; border-radius: 3px; font-weight: bold; font-size: 20px; box-shadow: inset 0 0 5px rgba(207, 146, 80, 0.3);" onclick="HWHCraft_API._triggerNav('«')">&lt;</div>
+						<h3 style="text-align: center; color: #fde5b6; margin: 0; font-size: 22px;">${colorName}</h3>
+						<div style="cursor: pointer; padding: 2px 20px; background: #2c1a0e; color: #fde5b6; border: 1px solid #cf9250; border-radius: 3px; font-weight: bold; font-size: 20px; box-shadow: inset 0 0 5px rgba(207, 146, 80, 0.3);" onclick="HWHCraft_API._triggerNav('»')">&gt;</div>
+					</div>
+					${gridHtml}
 				</div>
 			`;
-		}
-		gridHtml += `</div>`;
 
-		const html = `
-			<div style="min-width: 480px;">
-				<h3 style="text-align: center; color: #fde5b6; margin: 0 0 10px 0;">${colorName}</h3>
-				${gridHtml}
-			</div>
-		`;
+			const popupButtons = [
+				{ msg: "«", result: "nav_prev", color: 'blue' },
+				{ msg: I18N('SET_AS_DEFAULT'), result: "set_default", color: 'yellow' },
+				{ msg: I18N('LOAD_DEFAULT'), result: "load_default", color: 'orange' },
+				{ msg: I18N('EXPORT_SETTINGS'), result: "export_json", color: 'green' },
+				{ msg: I18N('IMPORT_SETTINGS'), result: "import_json", color: 'blue' },
+				{ msg: "Back", result: true, color: 'graphite' },
+				{ msg: "»", result: "nav_next", color: 'blue' },
+				{ msg: "Close", result: false, isClose: true }
+			];
 
-		const popupButtons = [
-			{ msg: I18N('SET_AS_DEFAULT'), result: "set_default", color: 'yellow' },
-			{ msg: I18N('LOAD_DEFAULT'), result: "load_default", color: 'orange' },
-			{ msg: I18N('EXPORT_SETTINGS'), result: "export_json", color: 'green' },
-			{ msg: I18N('IMPORT_SETTINGS'), result: "import_json", color: 'blue' },
-			{ msg: "Back", result: true, color: 'graphite' },
-			{ msg: "Close", result: false, isClose: true }
-		];
+			unsafeWindow.HWHCraft_API._triggerNav = (symbol) => {
+				setTimeout(() => {
+					const allButtons = document.querySelectorAll('.popup-button, .hwh-popup-button, .hwh-popup button, button, [role="button"]');
+					let btn = [...allButtons].find(b => b.textContent.includes(symbol));
+					if (!btn) btn = [...allButtons].find(b => b.innerText.includes(symbol));
 
-		const answer = await popup.confirm(html, popupButtons);
+					if (btn) {
+						btn.click();
+					} else {
+						// Fallback: try by index within the most likely container
+						const container = document.querySelector('.popup-buttons, .hwh-popup-buttons, .hwh-confirm-buttons');
+						if (container) {
+							const b = container.querySelectorAll('.popup-button, .hwh-popup-button, button');
+							if (symbol === '«' && b[0]) b[0].click();
+							else if (symbol === '»' && b.length >= 2) b[b.length - 2].click();
+						}
+					}
+				}, 50);
+			};
 
-		if (answer === "set_default") {
-			unsafeWindow.HWHCraft_API.saveGlobalDefault();
-			showItemCheckboxDialog(colorId, items, colorName);
-		} else if (answer === "load_default") {
-			unsafeWindow.HWHCraft_API.loadGlobalDefault();
-			showItemCheckboxDialog(colorId, items, colorName);
-		} else if (answer === "export_json") {
-			unsafeWindow.HWHCraft_API.exportSettings();
-			showItemCheckboxDialog(colorId, items, colorName);
-		} else if (answer === "import_json") {
-			unsafeWindow.HWHCraft_API.importSettings();
-			showItemCheckboxDialog(colorId, items, colorName);
-		} else if (answer === true) {
-			onClickNewButton();
+			const onKeyDown = (e) => {
+				if (e.key === 'ArrowLeft') {
+					unsafeWindow.HWHCraft_API._triggerNav('«');
+				} else if (e.key === 'ArrowRight') {
+					unsafeWindow.HWHCraft_API._triggerNav('»');
+				}
+			};
+			window.addEventListener('keydown', onKeyDown);
+
+			const answer = await popup.confirm(html, popupButtons);
+
+			window.removeEventListener('keydown', onKeyDown);
+
+			if (answer === "set_default") {
+				unsafeWindow.HWHCraft_API.saveGlobalDefault();
+				continue;
+			} else if (answer === "load_default") {
+				unsafeWindow.HWHCraft_API.loadGlobalDefault();
+				continue;
+			} else if (answer === "export_json") {
+				unsafeWindow.HWHCraft_API.exportSettings();
+				continue;
+			} else if (answer === "import_json") {
+				unsafeWindow.HWHCraft_API.importSettings();
+				continue;
+			} else if (answer === "nav_prev") {
+				colorId = colorId > 1 ? colorId - 1 : 6;
+				continue;
+			} else if (answer === "nav_next") {
+				colorId = colorId < 6 ? colorId + 1 : 1;
+				continue;
+			} else if (answer === true) {
+				onClickNewButton();
+				break;
+			} else {
+				break;
+			}
 		}
 	}
 
