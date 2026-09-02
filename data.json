@@ -171,6 +171,15 @@
     "coloreTestoBottone": "#dde18e"
   },
   {
+    "titolo": "Auto Crafter 💫 HC",
+    "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/AutoCraftHC.user.js",
+    "descrizione": "Auto Craft Hardcoded items",
+    "coloreCasella": "#dbdbdb",
+    "coloreTestoCasella": "#2d3d75",
+    "coloreBottone": "#b329e7",
+    "coloreTestoBottone": "#dde18e"
+  },
+  {
     "titolo": "🔮 Seer's game 🔮",
     "link": "https://github.com/HeroWarsTools/download/raw/refs/heads/main/Seer_Game.user.js",
     "descrizione": "do tasks of Seer with 1 click",
