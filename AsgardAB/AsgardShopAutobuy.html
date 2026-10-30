@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Asgard Shop Autobuy</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #23272e;
+    line-height: 1.55;
+    margin: 0;
+    padding: 24px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+    background: #ffffff;
+  }
+
+  h1 {
+    font-size: 26px;
+    color: #7a4a12;
+    text-align: center;
+    margin: 0 0 4px;
+    border-bottom: 3px solid #d9a441;
+    padding-bottom: 12px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: #8a7a5c;
+    font-size: 13px;
+    margin: 0 0 28px;
+  }
+
+  .download {
+    text-align: center;
+    margin: -14px 0 28px;
+  }
+
+  .download a {
+    display: inline-block;
+    background: #d9a441;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    text-decoration: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  }
+
+  .download a:hover { background: #c08e2e; }
+
+  .step {
+    margin: 0 0 30px;
+    padding: 0 0 24px;
+    border-bottom: 1px dashed #e2d8c3;
+    page-break-inside: avoid;
+  }
+
+  .step:last-child { border-bottom: none; }
+
+  .step-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .num {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #d9a441;
+    color: #fff;
+    font-weight: 700;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .step-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #4a3a1a;
+    margin: 0;
+  }
+
+  .step p {
+    margin: 0 0 12px 46px;
+    font-size: 15px;
+  }
+
+  .note {
+    margin: 0 0 12px 46px;
+    font-size: 13.5px;
+    color: #7a5c1e;
+    background: #fdf6e6;
+    border-left: 4px solid #d9a441;
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+
+  img {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 10px 0 0 46px;
+    border: 1px solid #d8cfbc;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+
+  .img-caption {
+    margin: 6px 0 0 46px;
+    font-size: 12px;
+    color: #8a7a5c;
+    font-style: italic;
+  }
+
+  @media print {
+    body { padding: 0; max-width: none; }
+    .step { page-break-inside: avoid; }
+    img { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+  <h1>Asgard Shop Autobuy</h1>
+  <p class="subtitle">Tutorial &mdash; Hero Wars Helper userscript</p>
+
+  <p class="download">
+    <a href="https://github.com/HeroWarsTools/download/raw/refs/heads/main/AsgardShopAutoBuy.user.js">
+      &#11015; Download AsgardShopAutoBuy.user.js
+    </a>
+  </p>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="num">1</div>
+      <h2 class="step-title">Install the script</h2>
+    </div>
+    <p>First of all, install this script in Tampermonkey together with the latest version of Hero Wars Helper.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="num">2</div>
+      <h2 class="step-title">Open the menu</h2>
+    </div>
+    <p>You will find the menu in the "others" menu of Hero Wars Helper.</p>
+    <img src="24.jpg" alt="Asgard Shop AutoBuy (settings) button in the Hero Wars Helper action menu">
+    <p class="img-caption">The "Asgard Shop AutoBuy (settings)" entry in the action menu.</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="num">3</div>
+      <h2 class="step-title">Import the settings from the web</h2>
+    </div>
+    <p>You have to import the settings from the web: open the <strong>Import/Export</strong> tab, load the URL and run the <strong>Import (preview)</strong>.</p>
+    <p class="note">Actually, only the OSH settings are available, not Maestro.</p>
+    <img src="25.jpg" alt="Import/Export tab with Load from web and Import (preview)">
+    <p class="img-caption">1) Import/Export tab &nbsp;&middot;&nbsp; 2) Load from web &nbsp;&middot;&nbsp; 3) Import (preview).</p>
+  </div>
+
+  <div class="step">
+    <div class="step-head">
+      <div class="num">4</div>
+      <h2 class="step-title">Purchase the buffs</h2>
+    </div>
+    <p>Open the <strong>Buy</strong> tab (arrow 4) to see the buy plan, then click <strong>Buy buffs</strong> (arrow 5): it is just one click plus a confirmation.</p>
+    <img src="26.jpg" alt="Buy tab with the buy plan and the Buy buffs button">
+    <p class="img-caption">4) Buy tab &nbsp;&middot;&nbsp; 5) Buy buffs + confirm.</p>
+  </div>
+
+</body>
+</html>

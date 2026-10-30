@@ -1,0 +1,11 @@
+First at all you have to install this script in Tampermonkey with Lastest version of Hero Wars Helper
+
+You will find the menu in the others menu of Hero Wars Helper
+24.jpg
+
+You have to import from the web the settings Actually, I have only the settings of OSH, not Maestro.
+25.jpg
+
+After this you have to purchase the buffs.
+It is just one click plus confirmation
+26.jpg
